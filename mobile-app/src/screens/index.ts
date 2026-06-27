@@ -1,0 +1,1 @@
+export { SplashAuthScreen } from './SplashAuthScreen';
