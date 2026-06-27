@@ -1,0 +1,12 @@
+{
+  "name": "terracare-simulator",
+  "private": true,
+  "description": "ESP32 hardware simulator for TerraCare integration testing",
+  "scripts": {
+    "simulate": "node simulate_esp32.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "dotenv": "^16.4.7"
+  }
+}
