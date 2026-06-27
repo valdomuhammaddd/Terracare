@@ -7,7 +7,7 @@
 // Enums & union types
 // ---------------------------------------------------------------------------
 
-export type UserRole = 'caregiver' | 'elder' | 'admin';
+export type UserRole = 'admin' | 'user' | 'caregiver' | 'elder';
 
 export type DeviceStatus = 'online' | 'offline' | 'low_battery' | 'error';
 
@@ -32,6 +32,8 @@ export interface Profile {
   phone: string | null;
   avatar_url: string | null;
   role: UserRole;
+  emergency_contact_1: string | null;
+  emergency_contact_2: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +47,8 @@ export interface Device {
   status: DeviceStatus;
   firmware_version: string | null;
   last_seen_at: string | null;
+  fall_threshold_g: number;
+  angle_threshold_deg: number;
   created_at: string;
   updated_at: string;
 }
@@ -82,17 +86,34 @@ export type ProfileInsert = Pick<Profile, 'id' | 'full_name' | 'email'> &
   Partial<Pick<Profile, 'phone' | 'avatar_url' | 'role'>>;
 
 export type ProfileUpdate = Partial<
-  Pick<Profile, 'full_name' | 'phone' | 'avatar_url' | 'role'>
+  Pick<
+    Profile,
+    'full_name' | 'phone' | 'avatar_url' | 'role' | 'emergency_contact_1' | 'emergency_contact_2'
+  >
 >;
 
 export type DeviceInsert = Pick<
   Device,
   'user_id' | 'mac_address' | 'name' | 'battery_level' | 'status'
 > &
-  Partial<Pick<Device, 'firmware_version' | 'last_seen_at'>>;
+  Partial<
+    Pick<
+      Device,
+      'firmware_version' | 'last_seen_at' | 'fall_threshold_g' | 'angle_threshold_deg'
+    >
+  >;
 
 export type DeviceUpdate = Partial<
-  Pick<Device, 'name' | 'battery_level' | 'status' | 'firmware_version' | 'last_seen_at'>
+  Pick<
+    Device,
+    | 'name'
+    | 'battery_level'
+    | 'status'
+    | 'firmware_version'
+    | 'last_seen_at'
+    | 'fall_threshold_g'
+    | 'angle_threshold_deg'
+  >
 >;
 
 export type VitalLogInsert = Pick<
