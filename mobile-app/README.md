@@ -1,114 +1,96 @@
-# TerraCare Mobile App
+<div align="center">
 
-<p align="center">
-  <strong>React Native · Expo SDK 56 · Supabase · NativeWind</strong><br/>
-  Caregiver dashboard untuk ekosistem TerraCare
-</p>
+# 🌿 TerraCare Mobile
 
-> Dokumentasi lengkap monorepo: [`../README.md`](../README.md)
+### *Dashboard caregiver — jaga keluarga dari genggaman*
 
----
+<img src="https://img.shields.io/badge/Expo_SDK-56-000020?style=for-the-badge&logo=expo" />
+<img src="https://img.shields.io/badge/Demo_Mode-ON-006948?style=for-the-badge&labelColor=85f8c4" />
+<img src="https://img.shields.io/badge/Family_SOS-Ready-ba1a1a?style=for-the-badge&labelColor=ffdad6" />
 
-## Ringkasan
+<br/>
 
-Aplikasi mobile TerraCare menyediakan antarmuka caregiver untuk:
+📖 Dokumentasi lengkap: [`../README.md`](../README.md)
 
-- Pemantauan vital real-time (BPM, SpO₂, baterai device)
-- Emergency overlay otomatis saat insiden jatuh terdeteksi
-- Riwayat aktivitas & insights kesehatan
-- Pengaturan kontak darurat dan kalibrasi sensor ESP32
-- **Demo Mode** untuk presentasi sidang tanpa hardware
+</div>
 
 ---
 
-## Quick Start
+## 👨‍👩‍👧 Simulasi 2 Menit (Sidang)
+
+```
+1. npx expo start -c          → Scan QR
+2. Daftar / Login             → Tab Monitoring (78 BPM · 98% SpO₂)
+3. Settings → Hubungkan       → TC-ALPHA-01 → Hubungkan ✅
+4. Tap SOS FAB merah          → Konfirmasi → Overlay keluarga
+5. Settings → Keluar          → Login screen bersih (no red overlay)
+```
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-cd mobile-app
 npm install
 cp .env.example .env
-# Edit .env — isi SUPABASE_URL, ANON_KEY, DEMO_MODE=true
+# Isi SUPABASE_URL · ANON_KEY · DEMO_MODE=true
 npx expo start -c
 ```
 
-Scan QR dengan **Expo Go SDK 56** atau tekan `i` / `a` untuk simulator.
+---
+
+## 🎨 Fitur Utama
+
+| Fitur | Deskripsi |
+|-------|-----------|
+| 💓 **Monitoring** | Live vitals · Panggil Bantuan · Notifikasi |
+| 🆘 **SOS FAB** | Haptic → Confirm → Family overlay → Supabase |
+| 🔗 **Device Claim** | Serial `TC-ALPHA-01` — tanpa BLE |
+| 🛡 **Demo Mode** | Mock data · silent errors · sidang-safe |
+| 📋 **Care Grid** | 8 pintasan · Coming Soon sheets |
+| ⚙️ **Settings** | Kontak darurat · logout · kebijakan privasi |
 
 ---
 
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Anon public key |
-| `EXPO_PUBLIC_DEMO_MODE` | `true` = mock data when offline (default) |
-
----
-
-## Scripts
-
-| Command | Action |
-|---------|--------|
-| `npm start` | Start Expo dev server |
-| `npm run android` | Open on Android |
-| `npm run ios` | Open on iOS |
-| `npx tsc --noEmit` | TypeScript check |
-
----
-
-## Struktur `src/`
+## 📁 Struktur `src/`
 
 ```
 src/
-├── app/              Expo Router (tabs, auth gate, settings)
-├── components/       atoms · molecules · organisms
-├── constants/        demo-config, auth-theme, theme
-├── hooks/            useDemoData, color scheme
-├── lib/supabase.ts   Supabase client
-├── screens/          Dashboard, History, Settings, ...
-├── services/         MockDataService
-├── store/            auth-store (Zustand)
-├── types/            supabase.ts (DB types)
-└── utils/            haptics, greeting
+├── app/           Expo Router (tabs · auth · settings)
+├── components/    atoms · molecules · organisms
+├── screens/       Dashboard · Care · History · Settings
+├── services/      emergency-service · device-claim · MockData
+├── store/         auth-store · emergency-ui-store
+└── constants/     demo-config · auth-theme
 ```
 
 ---
 
-## Tab Navigation
+## 🔧 Scripts
 
-| Tab | Screen | Route |
-|-----|--------|-------|
-| Monitoring | Live vitals dashboard | `/(tabs)/monitoring` |
-| Insights | Analytics & charts | `/(tabs)/insights` |
-| Activity | History timeline | `/(tabs)/activity` |
-| Care | Quick action grid | `/(tabs)/care` |
-
-Global **SOS FAB** tersedia di semua tab.
+| Command | Action |
+|---------|--------|
+| `npx expo start -c` | Dev server (cache clear) |
+| `npx tsc --noEmit` | TypeScript check |
+| `npm run ios` | iOS simulator |
+| `npm run android` | Android emulator |
 
 ---
 
-## Tech Highlights
+## 🛡 Kill Switches (Defense-Ready)
 
-- **NativeWind v4** + `babel.config.js` + `metro.config.js`
-- **@gorhom/bottom-sheet** untuk konfirmasi (SOS, logout, info)
-- **expo-haptics** untuk feedback taktil
-- **Skeleton loaders** (Reanimated) menggantikan spinner
-- **ErrorBoundary** untuk crash graceful
-- **Auth-aware splash** via `expo-splash-screen` + Zustand
-
----
-
-## Demo Mode
-
-Saat device offline atau database kosong, app menampilkan:
-
-- 78 BPM · 98% SpO₂ · status Online · Hub-Alpha-01
-- Activity logs & history mock
-
-Lihat [`src/services/MockDataService.ts`](src/services/MockDataService.ts).
+| # | Proteksi |
+|---|----------|
+| 1 | SOS manual ≠ overlay jatuh (`manual_trigger` filtered) |
+| 2 | Logout reset emergency UI state |
+| 3 | Demo mode = no Alert popups on Supabase errors |
 
 ---
 
-## Lisensi
+<div align="center">
 
-See [LICENSE](./LICENSE).
+**🌿 TerraCare Mobile** · PT TERRA DIGITAL SYSTEM
+
+*Made with 💚 for families who care*
+
+</div>

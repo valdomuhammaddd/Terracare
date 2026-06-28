@@ -1,9 +1,11 @@
 export { AppHeader } from './AppHeader';
 export { AuthForm } from './AuthForm';
 export { CustomTabBar } from './CustomTabBar';
+export { DeviceClaimModal } from './DeviceClaimModal';
 export { EmergencyOverlay } from './EmergencyOverlay';
 export { ErrorBoundary } from './ErrorBoundary';
 export { FamilyAlertOverlay } from './FamilyAlertOverlay';
+export { GlobalOverlays } from './GlobalOverlays';
 export { LoginForm } from './LoginForm';
 export { RegisterForm } from './RegisterForm';
 export { SosFab } from './SosFab';

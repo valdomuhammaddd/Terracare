@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text } from 'react-native';
 
 import {
   ConfirmBottomSheet,
@@ -26,44 +26,50 @@ export function SosFab() {
       variant: 'danger',
       onConfirm: () => {
         setSheetConfig(null);
-        if (user?.id) {
-          void startFamilyAlert(user.id);
+        if (!user?.id) {
+          Alert.alert('Supabase Error', JSON.stringify('Sesi tidak aktif. Silakan masuk kembali.'));
+          return;
         }
+        void (async () => {
+          try {
+            await startFamilyAlert(user.id);
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            Alert.alert('Supabase Error', JSON.stringify(message));
+          }
+        })();
       },
     });
   };
 
   return (
     <>
-      <View pointerEvents="box-none" style={styles.fabContainer}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Darurat SOS"
-          accessibilityHint="Mengirim sinyal darurat ke keluarga"
-          onPress={openConfirm}
-          style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
-          hitSlop={8}
-        >
-          <View pointerEvents="none" style={styles.pulseRing} />
-          <MaterialIcons name="emergency" size={32} color="#ffffff" />
-          <Text style={styles.fabLabel}>SOS</Text>
-        </Pressable>
-      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Darurat SOS"
+        accessibilityHint="Mengirim sinyal darurat ke keluarga"
+        onPress={openConfirm}
+        style={({ pressed }) => [styles.fab, pressed && styles.fabPressed]}
+        hitSlop={8}
+      >
+        <MaterialIcons name="emergency" size={32} color="#ffffff" />
+        <Text style={styles.fabLabel}>SOS</Text>
+      </Pressable>
 
-      <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
+      {sheetConfig ? (
+        <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
+      ) : null}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  fabContainer: {
+  fab: {
     position: 'absolute',
     right: 24,
     bottom: 96,
     zIndex: 40,
     elevation: 12,
-  },
-  fab: {
     height: 64,
     width: 64,
     borderRadius: 32,
@@ -74,15 +80,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
-    elevation: 8,
   },
   fabPressed: {
     transform: [{ scale: 0.92 }],
-  },
-  pulseRing: {
-    ...StyleSheet.absoluteFill,
-    borderRadius: 32,
-    backgroundColor: 'rgba(186, 26, 26, 0.35)',
   },
   fabLabel: {
     position: 'absolute',

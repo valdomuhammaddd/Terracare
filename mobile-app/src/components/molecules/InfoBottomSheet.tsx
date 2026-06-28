@@ -67,6 +67,10 @@ export function InfoBottomSheet({ config, onDismiss }: InfoBottomSheetProps) {
     [],
   );
 
+  if (!config) {
+    return null;
+  }
+
   return (
     <BottomSheetModal
       ref={ref}

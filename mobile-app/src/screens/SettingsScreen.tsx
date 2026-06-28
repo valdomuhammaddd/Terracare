@@ -1,15 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
@@ -17,6 +9,7 @@ import {
   type ConfirmSheetConfig,
 } from '@/components/molecules/ConfirmBottomSheet';
 import { InfoBottomSheet, type InfoSheetConfig } from '@/components/molecules/InfoBottomSheet';
+import { DeviceClaimModal } from '@/components/organisms/DeviceClaimModal';
 import { Skeleton } from '@/components/atoms/Skeleton';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
@@ -227,6 +220,7 @@ export function SettingsScreen() {
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
   const [infoConfig, setInfoConfig] = useState<InfoSheetConfig | null>(null);
+  const [claimModalVisible, setClaimModalVisible] = useState(false);
 
   const [contact1, setContact1] = useState('');
   const [contact2, setContact2] = useState('');
@@ -487,6 +481,15 @@ export function SettingsScreen() {
                   label="Informasi Akun"
                   onPress={() => setView('account')}
                 />
+                <MenuItem
+                  icon="sensors"
+                  label="Hubungkan Perangkat"
+                  badge="Serial"
+                  onPress={() => {
+                    void hapticLight();
+                    setClaimModalVisible(true);
+                  }}
+                />
                 <MenuItem icon="shield" label="Keamanan Akun" badge="Baru" onPress={() => openInfoSheet('Keamanan Akun', 'Autentikasi aman via Supabase Auth (JWT). Session disimpan di SecureStore. Row-Level Security memastikan data kesehatan hanya dapat diakses oleh pemilik akun.')} />
                 <MenuItem icon="notifications" label="Notifikasi" onPress={() => openInfoSheet('Notifikasi', 'TerraCare mengirim push notification untuk peringatan jatuh, pembaruan vital sign, dan status baterai perangkat. Aktifkan notifikasi di pengaturan perangkat Anda untuk pengalaman optimal.')} />
                 <MenuItem icon="lock" label="Kebijakan Privasi" onPress={() => openInfoSheet('Kebijakan Privasi', 'TerraCare melindungi data medis Anda sesuai standar keamanan internasional dan UU Perlindungan Data Pribadi (UU PDP). Data vital, riwayat insiden, dan kontak darurat hanya dapat diakses oleh akun caregiver yang terautentikasi melalui Row-Level Security Supabase. Kami tidak menjual data pribadi kepada pihak ketiga.')} />
@@ -561,6 +564,11 @@ export function SettingsScreen() {
 
       <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
       <InfoBottomSheet config={infoConfig} onDismiss={() => setInfoConfig(null)} />
+      <DeviceClaimModal
+        visible={claimModalVisible}
+        onDismiss={() => setClaimModalVisible(false)}
+        onClaimed={() => void bootstrap()}
+      />
     </View>
   );
 }

@@ -15,6 +15,22 @@ interface EmergencyUiState {
 
 let connectTimer: ReturnType<typeof setTimeout> | null = null;
 
+function scheduleConnectedPhase(
+  set: (partial: Partial<EmergencyUiState>) => void,
+  eventId: string | null,
+) {
+  if (connectTimer) clearTimeout(connectTimer);
+
+  connectTimer = setTimeout(() => {
+    void hapticMedium();
+    set({
+      phase: 'connected',
+      activeEventId: eventId,
+    });
+    connectTimer = null;
+  }, 3000);
+}
+
 export const useEmergencyUiStore = create<EmergencyUiState>((set, get) => ({
   phase: 'idle',
   activeEventId: null,
@@ -26,17 +42,7 @@ export const useEmergencyUiStore = create<EmergencyUiState>((set, get) => ({
     set({ phase: 'connecting', activeEventId: null });
 
     const result = await triggerManualSos(userId);
-
-    if (connectTimer) clearTimeout(connectTimer);
-
-    connectTimer = setTimeout(() => {
-      void hapticMedium();
-      set({
-        phase: 'connected',
-        activeEventId: result.eventId ?? null,
-      });
-      connectTimer = null;
-    }, 3000);
+    scheduleConnectedPhase(set, result.eventId ?? null);
   },
 
   cancelFamilyAlert: async () => {

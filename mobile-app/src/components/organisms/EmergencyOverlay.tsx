@@ -44,6 +44,10 @@ function isUnhandled(status: HandledStatus): boolean {
   return status === 'pending';
 }
 
+function isManualSosEvent(event: EmergencyEvent): boolean {
+  return event.classification === 'manual_trigger';
+}
+
 function formatFallClassification(fallType: FallType, classification: EventClassification): string {
   if (fallType === 'hard') {
     return 'Jatuh Keras Terdeteksi!';
@@ -190,6 +194,7 @@ export function EmergencyOverlay() {
 
   const openEmergency = useCallback(async (event: EmergencyEvent) => {
     if (!isUnhandled(event.handled_status)) return;
+    if (isManualSosEvent(event)) return;
 
     void hapticError();
     setEmergencyEvent(event);
@@ -239,7 +244,7 @@ export function EmergencyOverlay() {
         .limit(1);
 
       const pending = (pendingEvents?.[0] ?? null) as EmergencyEvent | null;
-      if (isMounted && pending) {
+      if (isMounted && pending && !isManualSosEvent(pending)) {
         await openEmergency(pending);
       }
     }
@@ -262,6 +267,7 @@ export function EmergencyOverlay() {
       if (!isEmergencyEventRow(row)) return;
       if (row.user_id !== userId) return;
       if (!isUnhandled(row.handled_status)) return;
+      if (isManualSosEvent(row)) return;
 
       void openEmergency(row);
     };
@@ -355,14 +361,12 @@ export function EmergencyOverlay() {
     }
   };
 
-  if (!emergencyEvent) {
+  if (!emergencyEvent || !isUnhandled(emergencyEvent.handled_status)) {
     return null;
   }
 
-  const isVisible = isUnhandled(emergencyEvent.handled_status);
-
   return (
-    <Modal visible={isVisible} animationType="fade" transparent statusBarTranslucent>
+    <Modal visible animationType="fade" transparent statusBarTranslucent>
       <View className="absolute inset-0 z-50 flex-1 bg-[#ba1a1a]">
         <SafeAreaView className="flex-1 bg-[#ba1a1a]" edges={['top', 'bottom']}>
           <View className="flex-1 px-container-margin py-md">

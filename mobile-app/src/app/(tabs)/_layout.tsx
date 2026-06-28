@@ -6,7 +6,7 @@ import { SosFab } from '@/components/organisms/SosFab';
 
 export default function TabsLayout() {
   return (
-    <View style={styles.root} pointerEvents="box-none">
+    <View style={styles.root}>
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{

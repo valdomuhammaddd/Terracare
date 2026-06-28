@@ -57,6 +57,10 @@ export function ConfirmBottomSheet({ config, onDismiss }: ConfirmBottomSheetProp
 
   const iconColor = variant === 'danger' ? '#ba1a1a' : '#006948';
 
+  if (!config) {
+    return null;
+  }
+
   return (
     <BottomSheetModal
       ref={ref}

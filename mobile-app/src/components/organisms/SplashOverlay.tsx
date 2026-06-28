@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { Modal, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -10,11 +10,8 @@ import Animated, {
 
 import { BrandLogo, ShieldIcon } from '@/components/atoms';
 
-interface SplashOverlayProps {
-  visible: boolean;
-}
-
-export function SplashOverlay({ visible }: SplashOverlayProps) {
+/** Only mount this component while splash should be visible. */
+export function SplashOverlay() {
   const opacity = useSharedValue(1);
   const pulse = useSharedValue(1);
 
@@ -26,14 +23,6 @@ export function SplashOverlay({ visible }: SplashOverlayProps) {
     );
   }, [pulse]);
 
-  useEffect(() => {
-    if (!visible) {
-      opacity.value = withTiming(0, { duration: 400 });
-    } else {
-      opacity.value = 1;
-    }
-  }, [visible, opacity]);
-
   const containerStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
@@ -42,19 +31,28 @@ export function SplashOverlay({ visible }: SplashOverlayProps) {
     opacity: pulse.value,
   }));
 
-  if (!visible) return null;
-
   return (
-    <Animated.View
-      style={containerStyle}
-      className="absolute inset-0 z-50 items-center justify-center bg-black"
-    >
-      <Animated.View style={iconStyle}>
-        <ShieldIcon size={120} />
+    <Modal visible transparent animationType="fade" statusBarTranslucent>
+      <Animated.View style={[styles.backdrop, containerStyle]}>
+        <Animated.View style={iconStyle}>
+          <ShieldIcon size={120} />
+        </Animated.View>
+        <View style={styles.logoWrap}>
+          <BrandLogo size="lg" />
+        </View>
       </Animated.View>
-      <View className="mt-md">
-        <BrandLogo size="lg" />
-      </View>
-    </Animated.View>
+    </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
+  },
+  logoWrap: {
+    marginTop: 16,
+  },
+});
