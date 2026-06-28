@@ -5,6 +5,7 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -15,6 +16,7 @@ import {
   ConfirmBottomSheet,
   type ConfirmSheetConfig,
 } from '@/components/molecules/ConfirmBottomSheet';
+import { InfoBottomSheet, type InfoSheetConfig } from '@/components/molecules/InfoBottomSheet';
 import { Skeleton } from '@/components/atoms/Skeleton';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
@@ -66,22 +68,21 @@ function MenuItem({ icon, label, badge, danger, onPress }: MenuItemProps) {
         void hapticLight();
         onPress();
       }}
-      className={`flex-row items-center justify-between border-b border-slate-100 px-3 py-4 active:scale-[0.99] ${
-        danger ? 'active:bg-rose-50' : 'active:bg-slate-50'
-      }`}
+      hitSlop={4}
+      style={({ pressed }) => [
+        menuStyles.item,
+        danger && menuStyles.itemDanger,
+        pressed && menuStyles.itemPressed,
+      ]}
     >
-      <View className="flex-row items-center gap-3">
+      <View style={menuStyles.itemLeft}>
         <MaterialIcons name={icon} size={22} color={danger ? '#ef4444' : '#64748b'} />
-        <Text className={`text-base font-semibold ${danger ? 'text-rose-600' : 'text-slate-800'}`}>
-          {label}
-        </Text>
+        <Text style={[menuStyles.label, danger && menuStyles.labelDanger]}>{label}</Text>
       </View>
-      <View className="flex-row items-center gap-2">
+      <View style={menuStyles.itemRight}>
         {badge ? (
-          <View className="rounded-full bg-primary-fixed/30 px-2 py-0.5">
-            <Text className="text-[10px] font-extrabold uppercase tracking-tighter text-primary">
-              {badge}
-            </Text>
+          <View style={menuStyles.badge}>
+            <Text style={menuStyles.badgeText}>{badge}</Text>
           </View>
         ) : null}
         <MaterialIcons name="chevron-right" size={18} color={danger ? '#fca5a5' : '#94a3b8'} />
@@ -89,6 +90,37 @@ function MenuItem({ icon, label, badge, danger, onPress }: MenuItemProps) {
     </Pressable>
   );
 }
+
+const menuStyles = StyleSheet.create({
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 56,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  itemDanger: {},
+  itemPressed: { backgroundColor: '#f8fafc' },
+  itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  itemRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  label: { fontSize: 16, fontWeight: '600', color: '#1e293b' },
+  labelDanger: { color: '#dc2626' },
+  badge: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(133, 248, 196, 0.3)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    color: '#006948',
+  },
+});
 
 interface SettingsFieldProps {
   label: string;
@@ -194,6 +226,7 @@ export function SettingsScreen() {
   const [device, setDevice] = useState<Device | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
+  const [infoConfig, setInfoConfig] = useState<InfoSheetConfig | null>(null);
 
   const [contact1, setContact1] = useState('');
   const [contact2, setContact2] = useState('');
@@ -364,13 +397,7 @@ export function SettingsScreen() {
   };
 
   const openInfoSheet = (title: string, message: string) => {
-    setSheetConfig({
-      title,
-      message,
-      confirmLabel: 'Mengerti',
-      variant: 'success',
-      onConfirm: () => undefined,
-    });
+    setInfoConfig({ title, message, confirmLabel: 'Mengerti' });
   };
 
   const confirmSignOut = () => {
@@ -380,15 +407,21 @@ export function SettingsScreen() {
       confirmLabel: 'Keluar',
       cancelLabel: 'Batal',
       variant: 'danger',
-      onConfirm: () => void performSignOut(),
+      onConfirm: () => {
+        void performSignOut();
+      },
     });
   };
 
   const performSignOut = async () => {
+    setSheetConfig(null);
     setIsSigningOut(true);
-    await signOut();
-    setIsSigningOut(false);
-    router.replace('/');
+    try {
+      await signOut();
+      router.replace('/');
+    } finally {
+      setIsSigningOut(false);
+    }
   };
 
   if (isBootstrapping) {
@@ -455,10 +488,10 @@ export function SettingsScreen() {
                   onPress={() => setView('account')}
                 />
                 <MenuItem icon="shield" label="Keamanan Akun" badge="Baru" onPress={() => openInfoSheet('Keamanan Akun', 'Autentikasi aman via Supabase Auth (JWT). Session disimpan di SecureStore. Row-Level Security memastikan data kesehatan hanya dapat diakses oleh pemilik akun.')} />
-                <MenuItem icon="notifications" label="Notifikasi" onPress={() => openInfoSheet('Notifikasi', 'Aktifkan notifikasi push untuk peringatan jatuh dan pembaruan vital sign secara real-time. Fitur ini dapat dikonfigurasi penuh di versi produksi.')} />
-                <MenuItem icon="lock" label="Kebijakan Privasi" onPress={() => openInfoSheet('Kebijakan Privasi', 'TerraCare melindungi data kesehatan sesuai UU PDP. Data vital dan insiden darurat hanya dapat diakses oleh caregiver yang terautentikasi melalui Row-Level Security Supabase.')} />
-                <MenuItem icon="description" label="Syarat & Ketentuan" onPress={() => openInfoSheet('Syarat & Ketentuan', 'TerraCare adalah alat bantu pemantauan IoT, bukan pengganti diagnosis medis profesional. Pengguna wajib menghubungi layanan darurat 119 saat insiden kritis.')} />
-                <MenuItem icon="help-center" label="Pusat Bantuan" onPress={() => openInfoSheet('Pusat Bantuan', 'Butuh bantuan? Email: support@terradigital.id\nTelepon: +62 21 5000-0000\nJam operasional: Senin–Jumat, 09.00–17.00 WIB.')} />
+                <MenuItem icon="notifications" label="Notifikasi" onPress={() => openInfoSheet('Notifikasi', 'TerraCare mengirim push notification untuk peringatan jatuh, pembaruan vital sign, dan status baterai perangkat. Aktifkan notifikasi di pengaturan perangkat Anda untuk pengalaman optimal.')} />
+                <MenuItem icon="lock" label="Kebijakan Privasi" onPress={() => openInfoSheet('Kebijakan Privasi', 'TerraCare melindungi data medis Anda sesuai standar keamanan internasional dan UU Perlindungan Data Pribadi (UU PDP). Data vital, riwayat insiden, dan kontak darurat hanya dapat diakses oleh akun caregiver yang terautentikasi melalui Row-Level Security Supabase. Kami tidak menjual data pribadi kepada pihak ketiga.')} />
+                <MenuItem icon="description" label="Syarat & Ketentuan" onPress={() => openInfoSheet('Syarat & Ketentuan', 'TerraCare adalah alat bantu pemantauan IoT, bukan pengganti diagnosis atau resep medis profesional. Pengguna wajib menghubungi layanan darurat 119 atau kontak medis terdekat saat insiden kritis. Penggunaan aplikasi berarti Anda menyetujui pemrosesan data kesehatan untuk tujuan pemantauan dan notifikasi keluarga.')} />
+                <MenuItem icon="help-center" label="Pusat Bantuan" onPress={() => openInfoSheet('Pusat Bantuan', 'Butuh bantuan?\n\nEmail: support@terradigital.id\nTelepon: +62 21 5000-0000\nJam operasional: Senin–Jumat, 09.00–17.00 WIB\n\nDokumentasi teknis tersedia di repository GitHub TerraCare.')} />
                 <MenuItem icon="logout" label="Keluar" danger onPress={confirmSignOut} />
               </View>
             </>
@@ -527,6 +560,7 @@ export function SettingsScreen() {
       </SafeAreaView>
 
       <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
+      <InfoBottomSheet config={infoConfig} onDismiss={() => setInfoConfig(null)} />
     </View>
   );
 }

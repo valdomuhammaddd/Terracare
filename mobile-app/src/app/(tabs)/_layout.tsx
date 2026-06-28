@@ -1,12 +1,12 @@
 import { Tabs } from 'expo-router';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { CustomTabBar } from '@/components/organisms/CustomTabBar';
 import { SosFab } from '@/components/organisms/SosFab';
 
 export default function TabsLayout() {
   return (
-    <View className="flex-1 bg-background">
+    <View style={styles.root} pointerEvents="box-none">
       <Tabs
         tabBar={(props) => <CustomTabBar {...props} />}
         screenOptions={{
@@ -23,3 +23,7 @@ export default function TabsLayout() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#f5fff7' },
+});

@@ -3,6 +3,7 @@ export { AuthForm } from './AuthForm';
 export { CustomTabBar } from './CustomTabBar';
 export { EmergencyOverlay } from './EmergencyOverlay';
 export { ErrorBoundary } from './ErrorBoundary';
+export { FamilyAlertOverlay } from './FamilyAlertOverlay';
 export { LoginForm } from './LoginForm';
 export { RegisterForm } from './RegisterForm';
 export { SosFab } from './SosFab';

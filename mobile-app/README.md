@@ -1,56 +1,114 @@
-# Welcome to your Expo app 👋
+# TerraCare Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<p align="center">
+  <strong>React Native · Expo SDK 56 · Supabase · NativeWind</strong><br/>
+  Caregiver dashboard untuk ekosistem TerraCare
+</p>
 
-## Get started
+> Dokumentasi lengkap monorepo: [`../README.md`](../README.md)
 
-1. Install dependencies
+---
 
-   ```bash
-   npm install
-   ```
+## Ringkasan
 
-2. Start the app
+Aplikasi mobile TerraCare menyediakan antarmuka caregiver untuk:
 
-   ```bash
-   npx expo start
-   ```
+- Pemantauan vital real-time (BPM, SpO₂, baterai device)
+- Emergency overlay otomatis saat insiden jatuh terdeteksi
+- Riwayat aktivitas & insights kesehatan
+- Pengaturan kontak darurat dan kalibrasi sensor ESP32
+- **Demo Mode** untuk presentasi sidang tanpa hardware
 
-In the output, you'll find options to open the app in a
+---
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Quick Start
 
 ```bash
-npm run reset-project
+cd mobile-app
+npm install
+cp .env.example .env
+# Edit .env — isi SUPABASE_URL, ANON_KEY, DEMO_MODE=true
+npx expo start -c
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Scan QR dengan **Expo Go SDK 56** atau tekan `i` / `a` untuk simulator.
 
-### Other setup steps
+---
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## Environment Variables
 
-## Learn more
+| Variable | Description |
+|----------|-------------|
+| `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Anon public key |
+| `EXPO_PUBLIC_DEMO_MODE` | `true` = mock data when offline (default) |
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Scripts
 
-## Join the community
+| Command | Action |
+|---------|--------|
+| `npm start` | Start Expo dev server |
+| `npm run android` | Open on Android |
+| `npm run ios` | Open on iOS |
+| `npx tsc --noEmit` | TypeScript check |
 
-Join our community of developers creating universal apps.
+---
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Struktur `src/`
+
+```
+src/
+├── app/              Expo Router (tabs, auth gate, settings)
+├── components/       atoms · molecules · organisms
+├── constants/        demo-config, auth-theme, theme
+├── hooks/            useDemoData, color scheme
+├── lib/supabase.ts   Supabase client
+├── screens/          Dashboard, History, Settings, ...
+├── services/         MockDataService
+├── store/            auth-store (Zustand)
+├── types/            supabase.ts (DB types)
+└── utils/            haptics, greeting
+```
+
+---
+
+## Tab Navigation
+
+| Tab | Screen | Route |
+|-----|--------|-------|
+| Monitoring | Live vitals dashboard | `/(tabs)/monitoring` |
+| Insights | Analytics & charts | `/(tabs)/insights` |
+| Activity | History timeline | `/(tabs)/activity` |
+| Care | Quick action grid | `/(tabs)/care` |
+
+Global **SOS FAB** tersedia di semua tab.
+
+---
+
+## Tech Highlights
+
+- **NativeWind v4** + `babel.config.js` + `metro.config.js`
+- **@gorhom/bottom-sheet** untuk konfirmasi (SOS, logout, info)
+- **expo-haptics** untuk feedback taktil
+- **Skeleton loaders** (Reanimated) menggantikan spinner
+- **ErrorBoundary** untuk crash graceful
+- **Auth-aware splash** via `expo-splash-screen` + Zustand
+
+---
+
+## Demo Mode
+
+Saat device offline atau database kosong, app menampilkan:
+
+- 78 BPM · 98% SpO₂ · status Online · Hub-Alpha-01
+- Activity logs & history mock
+
+Lihat [`src/services/MockDataService.ts`](src/services/MockDataService.ts).
+
+---
+
+## Lisensi
+
+See [LICENSE](./LICENSE).

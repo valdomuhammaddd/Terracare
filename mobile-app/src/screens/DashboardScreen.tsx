@@ -1,7 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 import { AppHeader } from '@/components/organisms/AppHeader';
@@ -11,12 +11,14 @@ import {
 } from '@/components/molecules/ConfirmBottomSheet';
 import { EmptyState } from '@/components/molecules/EmptyState';
 import { MonitoringSkeleton } from '@/components/molecules/MonitoringSkeleton';
+import { NotificationSheet } from '@/components/molecules/NotificationSheet';
 import { supabase } from '@/lib/supabase';
 import type { Device, DeviceStatus, Profile, VitalLog } from '@/types/supabase';
 import { getHealthStatus, getTimeGreeting } from '@/utils/greeting';
 import { hapticLight, hapticMedium } from '@/utils/haptics';
 import { isDemoModeActive } from '@/constants/demo-config';
 import { resolveDashboardForDemo } from '@/hooks/useDemoData';
+import { useFamilySos } from '@/hooks/useFamilySos';
 
 interface ActivityEntry {
   id: string;
@@ -124,6 +126,8 @@ export function DashboardScreen() {
   const [isChecking, setIsChecking] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { triggerFamilySos } = useFamilySos();
 
   const applyDevice = useCallback((nextDevice: Device) => {
     setDevice(nextDevice);
@@ -268,16 +272,17 @@ export function DashboardScreen() {
 
   const handleEmergencyCall = () => {
     void hapticLight();
-    const contact = profile?.emergency_contact_1;
     setSheetConfig({
       title: 'Panggil Bantuan',
-      message: contact
-        ? `Hubungi kontak darurat ${contact}? Tim medis siap membantu.`
-        : 'Hubungi layanan darurat 119? Pastikan situasi memerlukan bantuan segera.',
-      confirmLabel: 'Panggil Sekarang',
+      message:
+        'Kirim sinyal darurat ke keluarga terdaftar dan aktifkan protokol bantuan TerraCare?',
+      confirmLabel: 'Kirim SOS ke Keluarga',
       cancelLabel: 'Batal',
       variant: 'danger',
-      onConfirm: () => void Linking.openURL(`tel:${contact ?? '119'}`),
+      onConfirm: () => {
+        setSheetConfig(null);
+        triggerFamilySos();
+      },
     });
   };
 
@@ -308,6 +313,10 @@ export function DashboardScreen() {
     <View className="flex-1 bg-background">
       <AppHeader
         profileName={displayName}
+        onNotificationPress={() => {
+          void hapticLight();
+          setNotificationsOpen(true);
+        }}
         onAvatarPress={() => {
           void hapticLight();
           router.push('/settings');
@@ -363,7 +372,8 @@ export function DashboardScreen() {
         <View className="mb-gutter flex-row gap-gutter">
           <Pressable
             onPress={handleEmergencyCall}
-            className="flex-1 justify-between rounded-xl bg-primary-container p-md active:opacity-90"
+            hitSlop={4}
+            style={({ pressed }) => [dashStyles.helpCard, pressed && { opacity: 0.92 }]}
           >
             <View className="flex-row items-start justify-between">
               <MaterialIcons name="emergency" size={36} color="#f5fff7" />
@@ -453,6 +463,21 @@ export function DashboardScreen() {
       </ScrollView>
 
       <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
+      <NotificationSheet
+        visible={notificationsOpen}
+        onDismiss={() => setNotificationsOpen(false)}
+      />
     </View>
   );
 }
+
+const dashStyles = StyleSheet.create({
+  helpCard: {
+    flex: 1,
+    borderRadius: 16,
+    backgroundColor: '#00855d',
+    padding: 16,
+    minHeight: 140,
+    justifyContent: 'space-between',
+  },
+});

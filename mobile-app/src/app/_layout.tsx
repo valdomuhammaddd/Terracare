@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 import { LogBox } from 'react-native';
 
 import { EmergencyOverlay } from '@/components/organisms/EmergencyOverlay';
+import { FamilyAlertOverlay } from '@/components/organisms/FamilyAlertOverlay';
 import { AppProviders } from '@/components/providers/AppProviders';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -57,6 +58,7 @@ export default function RootLayout() {
   return (
     <AppProviders>
       <EmergencyOverlay />
+      <FamilyAlertOverlay />
       <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
