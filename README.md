@@ -10,7 +10,7 @@
 
 <br/>
 
-**PT TERRA DIGITAL SYSTEM** · Health-Tech · Fall Detection · Real-Time Vitals
+ · Health-Tech · Fall Detection · Real-Time Vitals
 
 <br/>
 
