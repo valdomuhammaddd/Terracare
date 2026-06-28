@@ -1,14 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_600SemiBold,
-  HankenGrotesk_700Bold,
-  useFonts,
-} from '@expo-google-fonts/hanken-grotesk';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -18,9 +11,17 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  ConfirmBottomSheet,
+  type ConfirmSheetConfig,
+} from '@/components/molecules/ConfirmBottomSheet';
+import { Skeleton } from '@/components/atoms/Skeleton';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth-store';
 import type { Device, DeviceUpdate, Profile, ProfileUpdate, UserRole } from '@/types/supabase';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { isDemoModeActive } from '@/constants/demo-config';
+import { MockDataService } from '@/services/MockDataService';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -46,17 +47,48 @@ function formatRoleLabel(role: UserRole): string {
   }
 }
 
-function showSuccessAlert(message: string) {
-  Alert.alert('Berhasil', message);
-}
-
 function showErrorAlert(message: string) {
   Alert.alert('Gagal', message);
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+interface MenuItemProps {
+  icon: keyof typeof MaterialIcons.glyphMap;
+  label: string;
+  badge?: string;
+  danger?: boolean;
+  onPress: () => void;
+}
+
+function MenuItem({ icon, label, badge, danger, onPress }: MenuItemProps) {
+  return (
+    <Pressable
+      onPress={() => {
+        void hapticLight();
+        onPress();
+      }}
+      className={`flex-row items-center justify-between border-b border-slate-100 px-3 py-4 active:scale-[0.99] ${
+        danger ? 'active:bg-rose-50' : 'active:bg-slate-50'
+      }`}
+    >
+      <View className="flex-row items-center gap-3">
+        <MaterialIcons name={icon} size={22} color={danger ? '#ef4444' : '#64748b'} />
+        <Text className={`text-base font-semibold ${danger ? 'text-rose-600' : 'text-slate-800'}`}>
+          {label}
+        </Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        {badge ? (
+          <View className="rounded-full bg-primary-fixed/30 px-2 py-0.5">
+            <Text className="text-[10px] font-extrabold uppercase tracking-tighter text-primary">
+              {badge}
+            </Text>
+          </View>
+        ) : null}
+        <MaterialIcons name="chevron-right" size={18} color={danger ? '#fca5a5' : '#94a3b8'} />
+      </View>
+    </Pressable>
+  );
+}
 
 interface SettingsFieldProps {
   label: string;
@@ -85,32 +117,6 @@ function SettingsField({
         keyboardType={keyboardType}
         autoCapitalize="none"
       />
-    </View>
-  );
-}
-
-interface ProfileCardProps {
-  profile: Profile;
-}
-
-function ProfileCard({ profile }: ProfileCardProps) {
-  return (
-    <View
-      className="mb-md flex-row items-center rounded-2xl bg-surface-container-lowest p-md shadow-sm"
-      style={{ elevation: 2 }}
-    >
-      <View className="mr-md h-16 w-16 items-center justify-center rounded-full bg-primary-container">
-        <Text className="text-xl font-bold text-on-primary-container">
-          {getInitials(profile.full_name)}
-        </Text>
-      </View>
-      <View className="flex-1">
-        <Text className="text-lg font-bold text-on-surface">{profile.full_name}</Text>
-        <Text className="mt-0.5 text-sm text-on-surface-variant">{profile.email}</Text>
-        <View className="mt-2 self-start rounded-full bg-surface-container px-3 py-1">
-          <Text className="text-xs font-bold text-primary">{formatRoleLabel(profile.role)}</Text>
-        </View>
-      </View>
     </View>
   );
 }
@@ -156,13 +162,13 @@ function ActionButton({
       disabled={isLoading}
       onPress={onPress}
       className={`h-14 w-full flex-row items-center justify-center rounded-2xl active:scale-[0.98] ${
-        isPrimary
-          ? 'bg-emerald-500'
-          : 'border-2 border-red-500 bg-transparent'
+        isPrimary ? 'bg-primary' : 'border-2 border-red-500 bg-transparent'
       } ${isLoading ? 'opacity-70' : ''}`}
     >
       {isLoading ? (
-        <ActivityIndicator color={isPrimary ? '#ffffff' : '#ef4444'} />
+        <Text className={`text-base font-bold tracking-wide ${isPrimary ? 'text-white' : 'text-red-500'}`}>
+          Menyimpan...
+        </Text>
       ) : (
         <Text
           className={`text-base font-bold tracking-wide ${
@@ -181,18 +187,13 @@ function ActionButton({
 // ---------------------------------------------------------------------------
 
 export function SettingsScreen() {
-  const [fontsLoaded] = useFonts({
-    HankenGrotesk_400Regular,
-    HankenGrotesk_600SemiBold,
-    HankenGrotesk_700Bold,
-  });
-
   const authProfile = useAuthStore((state) => state.profile);
   const signOut = useAuthStore((state) => state.signOut);
 
   const [profile, setProfile] = useState<Profile | null>(authProfile);
   const [device, setDevice] = useState<Device | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
+  const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
 
   const [contact1, setContact1] = useState('');
   const [contact2, setContact2] = useState('');
@@ -202,6 +203,7 @@ export function SettingsScreen() {
   const [isSavingContacts, setIsSavingContacts] = useState(false);
   const [isSavingDevice, setIsSavingDevice] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [view, setView] = useState<'hub' | 'account'>('hub');
 
   const bootstrap = useCallback(async () => {
     setIsBootstrapping(true);
@@ -240,6 +242,11 @@ export function SettingsScreen() {
       setDevice(primaryDevice);
       setFallThresholdG(String(primaryDevice.fall_threshold_g ?? 2.5));
       setAngleThresholdDeg(String(primaryDevice.angle_threshold_deg ?? 60));
+    } else if (isDemoModeActive()) {
+      const demoDevice = MockDataService.getDevice(user.id);
+      setDevice(demoDevice);
+      setFallThresholdG(String(demoDevice.fall_threshold_g));
+      setAngleThresholdDeg(String(demoDevice.angle_threshold_deg));
     }
 
     setIsBootstrapping(false);
@@ -252,6 +259,7 @@ export function SettingsScreen() {
   const handleSaveContacts = async () => {
     if (!profile) return;
 
+    void hapticMedium();
     setIsSavingContacts(true);
 
     const payload: ProfileUpdate = {
@@ -281,7 +289,13 @@ export function SettingsScreen() {
         : prev,
     );
 
-    showSuccessAlert('Kontak darurat berhasil disimpan.');
+    setSheetConfig({
+      title: 'Berhasil Disimpan',
+      message: 'Kontak darurat berhasil diperbarui dan siap digunakan saat insiden.',
+      confirmLabel: 'Mengerti',
+      variant: 'success',
+      onConfirm: () => undefined,
+    });
   };
 
   const handleUpdateDeviceConfig = async () => {
@@ -303,24 +317,30 @@ export function SettingsScreen() {
       return;
     }
 
+    void hapticMedium();
     setIsSavingDevice(true);
 
-    const payload: DeviceUpdate = {
-      fall_threshold_g: fallG,
-      angle_threshold_deg: angleDeg,
-    };
+    const isDemoDevice = device.id === MockDataService.getDevice().id;
 
-    const { error } = await supabase
-      .from('devices')
-      .update(payload as never)
-      .eq('id', device.id);
+    if (!isDemoDevice) {
+      const payload: DeviceUpdate = {
+        fall_threshold_g: fallG,
+        angle_threshold_deg: angleDeg,
+      };
+
+      const { error } = await supabase
+        .from('devices')
+        .update(payload as never)
+        .eq('id', device.id);
+
+      if (error) {
+        setIsSavingDevice(false);
+        showErrorAlert(error.message);
+        return;
+      }
+    }
 
     setIsSavingDevice(false);
-
-    if (error) {
-      showErrorAlert(error.message);
-      return;
-    }
 
     setDevice((prev) =>
       prev
@@ -332,43 +352,72 @@ export function SettingsScreen() {
         : prev,
     );
 
-    showSuccessAlert('Konfigurasi sensor berhasil diperbarui.');
+    setSheetConfig({
+      title: 'Konfigurasi Tersimpan',
+      message: isDemoDevice
+        ? 'Pengaturan sensor disimpan (mode demo). Perubahan akan disinkronkan ke ESP32 saat perangkat terhubung.'
+        : 'Pengaturan sensor telah diperbarui. Perubahan akan disinkronkan ke perangkat ESP32 pada siklus berikutnya.',
+      confirmLabel: 'Mengerti',
+      variant: 'success',
+      onConfirm: () => undefined,
+    });
   };
 
-  const handleSignOut = async () => {
+  const openInfoSheet = (title: string, message: string) => {
+    setSheetConfig({
+      title,
+      message,
+      confirmLabel: 'Mengerti',
+      variant: 'success',
+      onConfirm: () => undefined,
+    });
+  };
+
+  const confirmSignOut = () => {
+    setSheetConfig({
+      title: 'Keluar dari Akun',
+      message: 'Anda yakin ingin keluar? Pemantauan realtime akan dihentikan di perangkat ini.',
+      confirmLabel: 'Keluar',
+      cancelLabel: 'Batal',
+      variant: 'danger',
+      onConfirm: () => void performSignOut(),
+    });
+  };
+
+  const performSignOut = async () => {
     setIsSigningOut(true);
     await signOut();
     setIsSigningOut(false);
     router.replace('/');
   };
 
-  if (!fontsLoaded || isBootstrapping) {
+  if (isBootstrapping) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#006948" />
+      <View className="flex-1 bg-background px-container-margin pt-xl">
+        <Skeleton height={120} className="mb-lg w-full" />
+        <Skeleton height={280} className="w-full" />
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-background">
-      <SafeAreaView className="flex-1" edges={['top']}>
-        {/* Header */}
-        <View
-          className="bg-surface-container-lowest px-container-margin pb-md pt-sm shadow-sm"
-          style={{ elevation: 3 }}
-        >
-          <View className="flex-row items-center gap-sm">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Kembali"
-              onPress={() => router.back()}
-              className="rounded-full bg-surface-container-high p-2"
-            >
-              <MaterialIcons name="arrow-back" size={22} color="#0b1c30" />
-            </Pressable>
-            <Text className="text-headline-lg-mobile font-bold text-on-surface">Pengaturan</Text>
+      <SafeAreaView className="flex-1" edges={['top', 'bottom']}>
+        <View className="flex-row items-center justify-between bg-surface px-container-margin py-base">
+          <View className="flex-row items-center gap-2">
+            {view === 'account' ? (
+              <Pressable onPress={() => setView('hub')} className="mr-2 rounded-full p-2">
+                <MaterialIcons name="arrow-back" size={22} color="#006948" />
+              </Pressable>
+            ) : (
+              <Pressable onPress={() => router.back()} className="mr-2 rounded-full p-2">
+                <MaterialIcons name="arrow-back" size={22} color="#006948" />
+              </Pressable>
+            )}
+            <MaterialIcons name="security" size={22} color="#006948" />
+            <Text className="text-headline-md font-bold text-on-surface">TerraCare</Text>
           </View>
+          <MaterialIcons name="notifications-none" size={24} color="#545f73" />
         </View>
 
         <ScrollView
@@ -377,67 +426,107 @@ export function SettingsScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {profile ? <ProfileCard profile={profile} /> : null}
+          {profile ? (
+            <View className="relative mb-lg overflow-hidden rounded-xl bg-primary-container p-md">
+              <View className="flex-row items-center gap-md">
+                <View className="h-20 w-20 items-center justify-center rounded-full border-2 border-white bg-primary">
+                  <Text className="text-2xl font-bold text-white">{getInitials(profile.full_name)}</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-headline-md font-bold text-white">{profile.full_name}</Text>
+                  <Text className="text-sm text-primary-fixed opacity-90">
+                    {formatRoleLabel(profile.role)} • ID: TC-{profile.id.slice(0, 4).toUpperCase()}
+                  </Text>
+                  <Text className="mt-1 text-xs text-white/80">{profile.email}</Text>
+                </View>
+              </View>
+            </View>
+          ) : null}
 
-          <SectionCard title="Kontak Darurat">
-            <SettingsField
-              label="Kontak Darurat 1"
-              value={contact1}
-              onChangeText={setContact1}
-              placeholder="+6281234567890"
-              keyboardType="phone-pad"
-            />
-            <SettingsField
-              label="Kontak Darurat 2"
-              value={contact2}
-              onChangeText={setContact2}
-              placeholder="+6289876543210"
-              keyboardType="phone-pad"
-            />
-            <ActionButton
-              label="Simpan Kontak"
-              onPress={() => void handleSaveContacts()}
-              isLoading={isSavingContacts}
-            />
-          </SectionCard>
+          {view === 'hub' ? (
+            <>
+              <Text className="mb-base px-1 text-label-md uppercase tracking-widest text-secondary">
+                Pengaturan & Akun
+              </Text>
+              <View className="overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-lowest">
+                <MenuItem
+                  icon="person"
+                  label="Informasi Akun"
+                  onPress={() => setView('account')}
+                />
+                <MenuItem icon="shield" label="Keamanan Akun" badge="Baru" onPress={() => openInfoSheet('Keamanan Akun', 'Autentikasi aman via Supabase Auth (JWT). Session disimpan di SecureStore. Row-Level Security memastikan data kesehatan hanya dapat diakses oleh pemilik akun.')} />
+                <MenuItem icon="notifications" label="Notifikasi" onPress={() => openInfoSheet('Notifikasi', 'Aktifkan notifikasi push untuk peringatan jatuh dan pembaruan vital sign secara real-time. Fitur ini dapat dikonfigurasi penuh di versi produksi.')} />
+                <MenuItem icon="lock" label="Kebijakan Privasi" onPress={() => openInfoSheet('Kebijakan Privasi', 'TerraCare melindungi data kesehatan sesuai UU PDP. Data vital dan insiden darurat hanya dapat diakses oleh caregiver yang terautentikasi melalui Row-Level Security Supabase.')} />
+                <MenuItem icon="description" label="Syarat & Ketentuan" onPress={() => openInfoSheet('Syarat & Ketentuan', 'TerraCare adalah alat bantu pemantauan IoT, bukan pengganti diagnosis medis profesional. Pengguna wajib menghubungi layanan darurat 119 saat insiden kritis.')} />
+                <MenuItem icon="help-center" label="Pusat Bantuan" onPress={() => openInfoSheet('Pusat Bantuan', 'Butuh bantuan? Email: support@terradigital.id\nTelepon: +62 21 5000-0000\nJam operasional: Senin–Jumat, 09.00–17.00 WIB.')} />
+                <MenuItem icon="logout" label="Keluar" danger onPress={confirmSignOut} />
+              </View>
+            </>
+          ) : (
+            <>
+              <Text className="mb-md text-headline-md font-bold text-on-surface">Profil Pengguna</Text>
 
-          <SectionCard title="Konfigurasi Sensor (Dev Mode)" bordered>
-            <Text className="mb-md text-sm text-on-surface-variant">
-              Sesuaikan ambang deteksi jatuh untuk perangkat{' '}
-              {device?.name ?? '—'}. Nilai ini disinkronkan ke ESP32 pada siklus
-              berikutnya.
-            </Text>
-            <SettingsField
-              label="Sensitivitas Benturan (G)"
-              value={fallThresholdG}
-              onChangeText={setFallThresholdG}
-              placeholder="2.5"
-              keyboardType="decimal-pad"
-            />
-            <SettingsField
-              label="Batas Kemiringan (Derajat)"
-              value={angleThresholdDeg}
-              onChangeText={setAngleThresholdDeg}
-              placeholder="60"
-              keyboardType="decimal-pad"
-            />
-            <ActionButton
-              label="Update Konfigurasi Alat"
-              onPress={() => void handleUpdateDeviceConfig()}
-              isLoading={isSavingDevice}
-            />
-          </SectionCard>
+              <SectionCard title="Kontak Darurat">
+                <SettingsField
+                  label="Kontak Darurat 1"
+                  value={contact1}
+                  onChangeText={setContact1}
+                  placeholder="+6281234567890"
+                  keyboardType="phone-pad"
+                />
+                <SettingsField
+                  label="Kontak Darurat 2"
+                  value={contact2}
+                  onChangeText={setContact2}
+                  placeholder="+6289876543210"
+                  keyboardType="phone-pad"
+                />
+                <ActionButton
+                  label="Simpan Perubahan"
+                  onPress={() => void handleSaveContacts()}
+                  isLoading={isSavingContacts}
+                />
+              </SectionCard>
 
-          <View className="mt-md">
-            <ActionButton
-              label="Keluar Akun"
-              onPress={() => void handleSignOut()}
-              isLoading={isSigningOut}
-              variant="outline-danger"
-            />
-          </View>
+              <SectionCard title="Kalibrasi Perangkat" bordered>
+                <Text className="mb-md text-sm text-on-surface-variant">
+                  Sensitivitas deteksi jatuh untuk {device?.name ?? 'perangkat'}.
+                </Text>
+                <SettingsField
+                  label="Sensitivitas Benturan (G)"
+                  value={fallThresholdG}
+                  onChangeText={setFallThresholdG}
+                  placeholder="2.5"
+                  keyboardType="decimal-pad"
+                />
+                <SettingsField
+                  label="Batas Kemiringan (Derajat)"
+                  value={angleThresholdDeg}
+                  onChangeText={setAngleThresholdDeg}
+                  placeholder="60"
+                  keyboardType="decimal-pad"
+                />
+                <ActionButton
+                  label="Simpan Konfigurasi"
+                  onPress={() => void handleUpdateDeviceConfig()}
+                  isLoading={isSavingDevice}
+                />
+              </SectionCard>
+
+              <View className="mt-md">
+                <ActionButton
+                  label="KELUAR DARI AKUN"
+                  onPress={confirmSignOut}
+                  isLoading={isSigningOut}
+                  variant="outline-danger"
+                />
+              </View>
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
+
+      <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
     </View>
   );
 }

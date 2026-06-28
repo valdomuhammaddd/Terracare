@@ -7,26 +7,44 @@ import type { Database } from '@/types/supabase';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
+/** In-memory fallback for Expo web SSR in Node (no window/localStorage). */
+const memoryStorage = new Map<string, string>();
+
+function hasBrowserStorage(): boolean {
+  return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
 const ExpoSecureStoreAdapter = {
   getItem: (key: string): Promise<string | null> => {
-    if (Platform.OS === 'web') {
-      return Promise.resolve(localStorage.getItem(key));
+    if (hasBrowserStorage()) {
+      return Promise.resolve(window.localStorage.getItem(key));
     }
-    return SecureStore.getItemAsync(key);
+    if (Platform.OS !== 'web') {
+      return SecureStore.getItemAsync(key);
+    }
+    return Promise.resolve(memoryStorage.get(key) ?? null);
   },
   setItem: (key: string, value: string): Promise<void> => {
-    if (Platform.OS === 'web') {
-      localStorage.setItem(key, value);
+    if (hasBrowserStorage()) {
+      window.localStorage.setItem(key, value);
       return Promise.resolve();
     }
-    return SecureStore.setItemAsync(key, value);
+    if (Platform.OS !== 'web') {
+      return SecureStore.setItemAsync(key, value);
+    }
+    memoryStorage.set(key, value);
+    return Promise.resolve();
   },
   removeItem: (key: string): Promise<void> => {
-    if (Platform.OS === 'web') {
-      localStorage.removeItem(key);
+    if (hasBrowserStorage()) {
+      window.localStorage.removeItem(key);
       return Promise.resolve();
     }
-    return SecureStore.deleteItemAsync(key);
+    if (Platform.OS !== 'web') {
+      return SecureStore.deleteItemAsync(key);
+    }
+    memoryStorage.delete(key);
+    return Promise.resolve();
   },
 };
 

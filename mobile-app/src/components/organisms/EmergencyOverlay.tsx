@@ -2,7 +2,6 @@ import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Linking,
   Modal,
   Pressable,
@@ -12,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { supabase } from '@/lib/supabase';
+import { hapticError } from '@/utils/haptics';
 import type {
   EmergencyEvent,
   EmergencyEventUpdate,
@@ -159,17 +159,17 @@ function TriagePanel({ event, vitals }: TriagePanelProps) {
         </Text>
         <View className="flex-row justify-around">
           <View className="items-center">
-            <Text className="text-3xl font-bold text-slate-800">
+            <Text className="text-4xl font-extrabold text-[#0b1c30]">
               {vitals.bpm !== null ? vitals.bpm : '--'}
             </Text>
-            <Text className="text-sm font-medium text-slate-500">BPM</Text>
+            <Text className="text-sm font-semibold text-[#3d4a42]">BPM</Text>
           </View>
           <View className="h-12 w-px bg-slate-200" />
           <View className="items-center">
-            <Text className="text-3xl font-bold text-slate-800">
+            <Text className="text-4xl font-extrabold text-[#0b1c30]">
               {vitals.spo2 !== null ? vitals.spo2 : '--'}
             </Text>
-            <Text className="text-sm font-medium text-slate-500">SpO₂ %</Text>
+            <Text className="text-sm font-semibold text-[#3d4a42]">SpO₂ %</Text>
           </View>
         </View>
       </View>
@@ -191,6 +191,7 @@ export function EmergencyOverlay() {
   const openEmergency = useCallback(async (event: EmergencyEvent) => {
     if (!isUnhandled(event.handled_status)) return;
 
+    void hapticError();
     setEmergencyEvent(event);
     const nextVitals = await fetchPostFallVitals(event);
     setVitals(nextVitals);
@@ -216,12 +217,16 @@ export function EmergencyOverlay() {
 
       const { data: profileRow } = await supabase
         .from('profiles')
-        .select('phone')
+        .select('emergency_contact_1, emergency_contact_2')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (isMounted && profileRow && typeof profileRow === 'object' && 'phone' in profileRow) {
-        const phone = (profileRow as { phone: string | null }).phone;
+      if (isMounted && profileRow && typeof profileRow === 'object') {
+        const row = profileRow as {
+          emergency_contact_1: string | null;
+          emergency_contact_2: string | null;
+        };
+        const phone = row.emergency_contact_1 ?? row.emergency_contact_2;
         if (phone) setEmergencyPhone(phone);
       }
 
@@ -358,8 +363,8 @@ export function EmergencyOverlay() {
 
   return (
     <Modal visible={isVisible} animationType="fade" transparent statusBarTranslucent>
-      <View className="absolute inset-0 z-50 flex-1 bg-red-600">
-        <SafeAreaView className="flex-1 animate-pulse bg-red-600">
+      <View className="absolute inset-0 z-50 flex-1 bg-[#ba1a1a]">
+        <SafeAreaView className="flex-1 bg-[#ba1a1a]" edges={['top', 'bottom']}>
           <View className="flex-1 px-container-margin py-md">
             {/* Warning title */}
             <View className="mt-md items-center">
@@ -367,7 +372,7 @@ export function EmergencyOverlay() {
               <Text className="mt-sm text-center text-3xl font-black tracking-tight text-white">
                 PERINGATAN BAHAYA!
               </Text>
-              <Text className="mt-2 text-center text-base font-medium text-white/90">
+              <Text className="mt-2 text-center text-lg font-semibold text-white">
                 Sistem mendeteksi kejadian darurat. Segera lakukan triase.
               </Text>
             </View>
@@ -399,7 +404,9 @@ export function EmergencyOverlay() {
                 onPress={handleDismiss}
               />
               {isDismissing ? (
-                <ActivityIndicator color="#ffffff" className="mt-2" />
+                <Text className="mt-2 text-center text-sm font-semibold text-white">
+                  Menyimpan...
+                </Text>
               ) : null}
             </View>
           </View>

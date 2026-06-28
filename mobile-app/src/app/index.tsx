@@ -1,23 +1,11 @@
-import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { Redirect } from 'expo-router';
 
+import { AdminDashboardScreen, SplashAuthScreen } from '@/screens';
 import { useAuthStore } from '@/store/auth-store';
-import { AdminDashboardScreen, DashboardScreen, SplashAuthScreen } from '@/screens';
 
 export default function Index() {
-  const { isAuthReady, isAuthenticated, userRole, initializeAuth } = useAuthStore();
-
-  useEffect(() => {
-    void initializeAuth();
-  }, [initializeAuth]);
-
-  if (!isAuthReady) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#006948" />
-      </View>
-    );
-  }
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const userRole = useAuthStore((state) => state.userRole);
 
   if (!isAuthenticated) {
     return <SplashAuthScreen />;
@@ -27,5 +15,5 @@ export default function Index() {
     return <AdminDashboardScreen />;
   }
 
-  return <DashboardScreen />;
+  return <Redirect href="/(tabs)/monitoring" />;
 }

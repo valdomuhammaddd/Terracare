@@ -14,7 +14,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ---------------------------------------------------------------------------
 DO $$
 BEGIN
-  CREATE TYPE public.user_role AS ENUM ('caregiver', 'elder', 'admin');
+  CREATE TYPE public.user_role AS ENUM ('caregiver', 'elder', 'admin', 'user');
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END $$;
@@ -70,22 +70,6 @@ BEGIN
 END;
 $$;
 
--- Helper: true when the row's device belongs to the current auth user
-CREATE OR REPLACE FUNCTION public.user_owns_device(p_device_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.devices d
-    WHERE d.id = p_device_id
-      AND d.user_id = auth.uid()
-  );
-$$;
-
 -- ---------------------------------------------------------------------------
 -- profiles
 -- ---------------------------------------------------------------------------
@@ -95,6 +79,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   email       text NOT NULL,
   phone       text,
   avatar_url  text,
+  emergency_contact_1 text,
+  emergency_contact_2 text,
   role        public.user_role NOT NULL DEFAULT 'caregiver',
   created_at  timestamptz NOT NULL DEFAULT timezone('utc', now()),
   updated_at  timestamptz NOT NULL DEFAULT timezone('utc', now()),
@@ -149,6 +135,10 @@ CREATE TABLE IF NOT EXISTS public.devices (
   status            public.device_status NOT NULL DEFAULT 'offline',
   firmware_version  text,
   last_seen_at      timestamptz,
+  fall_threshold_g     numeric(4, 2) NOT NULL DEFAULT 2.5
+                       CHECK (fall_threshold_g >= 0.5 AND fall_threshold_g <= 10.0),
+  angle_threshold_deg  numeric(5, 2) NOT NULL DEFAULT 60.0
+                       CHECK (angle_threshold_deg >= 0 AND angle_threshold_deg <= 90),
   created_at        timestamptz NOT NULL DEFAULT timezone('utc', now()),
   updated_at        timestamptz NOT NULL DEFAULT timezone('utc', now()),
   CONSTRAINT devices_mac_address_unique UNIQUE (mac_address)
@@ -162,6 +152,23 @@ CREATE TRIGGER devices_set_updated_at
   BEFORE UPDATE ON public.devices
   FOR EACH ROW
   EXECUTE FUNCTION public.set_updated_at();
+
+-- Helper: true when the row's device belongs to the current auth user
+-- (Must be created AFTER public.devices exists — otherwise error 42P01)
+CREATE OR REPLACE FUNCTION public.user_owns_device(p_device_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.devices d
+    WHERE d.id = p_device_id
+      AND d.user_id = auth.uid()
+  );
+$$;
 
 -- ---------------------------------------------------------------------------
 -- vital_logs

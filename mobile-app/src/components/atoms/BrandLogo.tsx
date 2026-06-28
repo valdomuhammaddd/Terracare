@@ -1,21 +1,51 @@
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+
+import { authColors } from '@/constants/auth-theme';
 
 interface BrandLogoProps {
   size?: 'sm' | 'lg';
 }
 
+const styles = StyleSheet.create({
+  wrap: {
+    alignItems: 'center',
+  },
+  titleLg: {
+    fontSize: 32,
+    letterSpacing: -0.5,
+  },
+  titleSm: {
+    fontSize: 24,
+    letterSpacing: -0.5,
+  },
+  terra: {
+    fontWeight: '900',
+    color: authColors.brandSlate,
+  },
+  care: {
+    fontWeight: '300',
+    color: authColors.primary,
+  },
+  subtitle: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '500',
+    letterSpacing: 0.4,
+    color: authColors.onSurfaceVariant,
+  },
+});
+
 export function BrandLogo({ size = 'lg' }: BrandLogoProps) {
-  const titleClass = size === 'lg' ? 'text-3xl' : 'text-2xl';
+  const titleStyle = size === 'lg' ? styles.titleLg : styles.titleSm;
 
   return (
-    <View className="items-center">
-      <Text className={`${titleClass} tracking-tighter`}>
-        <Text className="font-black text-brand-slate">Terra</Text>
-        <Text className="font-light text-primary">Care</Text>
+    <View style={styles.wrap}>
+      <Text style={titleStyle}>
+        <Text style={styles.terra}>Terra</Text>
+        <Text style={styles.care}>Care</Text>
       </Text>
-      <Text className="mt-2 text-center text-sm font-medium tracking-wide text-on-surface-variant">
-        Smart Triage & Fall Detection
-      </Text>
+      <Text style={styles.subtitle}>Smart Triage & Fall Detection</Text>
     </View>
   );
 }

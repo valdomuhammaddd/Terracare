@@ -1,28 +1,22 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_600SemiBold,
-  HankenGrotesk_700Bold,
-  useFonts,
-} from '@expo-google-fonts/hanken-grotesk';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
+import { AppHeader } from '@/components/organisms/AppHeader';
+import {
+  ConfirmBottomSheet,
+  type ConfirmSheetConfig,
+} from '@/components/molecules/ConfirmBottomSheet';
+import { EmptyState } from '@/components/molecules/EmptyState';
+import { MonitoringSkeleton } from '@/components/molecules/MonitoringSkeleton';
 import { supabase } from '@/lib/supabase';
 import type { Device, DeviceStatus, Profile, VitalLog } from '@/types/supabase';
-
-// ---------------------------------------------------------------------------
-// Local types
-// ---------------------------------------------------------------------------
+import { getHealthStatus, getTimeGreeting } from '@/utils/greeting';
+import { hapticLight, hapticMedium } from '@/utils/haptics';
+import { isDemoModeActive } from '@/constants/demo-config';
+import { resolveDashboardForDemo } from '@/hooks/useDemoData';
 
 interface ActivityEntry {
   id: string;
@@ -44,19 +38,8 @@ const INITIAL_DASHBOARD: DashboardState = {
   deviceStatus: 'offline',
 };
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function getFirstName(fullName: string): string {
-  return fullName.trim().split(/\s+/)[0] ?? fullName;
-}
-
 function formatActivityTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return new Date(iso).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 }
 
 function isDeviceRow(value: unknown): value is Device {
@@ -70,102 +53,61 @@ function isVitalLogRow(value: unknown): value is VitalLog {
 }
 
 function prependActivity(entries: ActivityEntry[], message: string): ActivityEntry[] {
-  return [{ id: `${Date.now()}-${Math.random()}`, message, at: new Date().toISOString() }, ...entries].slice(
-    0,
-    3,
-  );
+  return [
+    { id: `${Date.now()}-${Math.random()}`, message, at: new Date().toISOString() },
+    ...entries,
+  ].slice(0, 5);
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-interface ConnectionStatusBadgeProps {
-  isOnline: boolean;
-}
-
-function ConnectionStatusBadge({ isOnline }: ConnectionStatusBadgeProps) {
+function SparklineBars() {
+  const heights = [0.5, 0.67, 0.75, 0.5, 0.8, 0.67, 0.5, 0.33, 1];
   return (
-    <View
-      className={`rounded-full px-3 py-1 ${isOnline ? 'bg-primary-container' : 'bg-surface-container-high'}`}
-    >
-      <Text
-        className={`text-xs font-bold tracking-wider ${isOnline ? 'text-on-primary-container' : 'text-on-surface-variant'}`}
-      >
-        {isOnline ? 'AKTIF' : 'OFFLINE'}
-      </Text>
-    </View>
-  );
-}
-
-interface BatteryIndicatorProps {
-  level: number;
-}
-
-function BatteryIndicator({ level }: BatteryIndicatorProps) {
-  const clamped = Math.max(0, Math.min(100, level));
-  const iconName =
-    clamped >= 80 ? 'battery-full' : clamped >= 40 ? 'battery-5-bar' : clamped >= 15 ? 'battery-3-bar' : 'battery-alert';
-
-  return (
-    <View className="flex-row items-center gap-1 rounded-full bg-surface-container-low px-2 py-1">
-      <MaterialIcons name={iconName} size={18} color="#3d4a42" />
-      <Text className="text-xs font-semibold text-on-surface-variant">{clamped}%</Text>
-    </View>
-  );
-}
-
-interface VitalCardProps {
-  label: string;
-  value: number | null;
-  unit: string;
-  iconName: keyof typeof MaterialIcons.glyphMap;
-  iconColor: string;
-  iconBackground: string;
-}
-
-function VitalCard({ label, value, unit, iconName, iconColor, iconBackground }: VitalCardProps) {
-  return (
-    <View
-      className="flex-1 rounded-2xl bg-surface-container-lowest p-md shadow-md"
-      style={{ elevation: 4 }}
-    >
-      <View className="mb-sm flex-row items-center justify-between">
-        <Text className="text-label-md uppercase tracking-wider text-secondary">{label}</Text>
-        <View className={`rounded-full p-1.5 ${iconBackground}`}>
-          <MaterialIcons name={iconName} size={18} color={iconColor} />
-        </View>
-      </View>
-      <View className="flex-row items-baseline gap-1">
-        <Text className="text-4xl font-bold tracking-tight text-on-surface">
-          {value !== null ? value : '--'}
-        </Text>
-        <Text className="text-sm font-medium text-on-surface-variant">{unit}</Text>
-      </View>
+    <View className="h-24 w-full flex-row items-end justify-between rounded-lg bg-surface-container px-1 opacity-80">
+      {heights.map((h, i) => (
+        <View
+          key={i}
+          className="w-1.5 rounded-t bg-primary"
+          style={{ height: `${h * 100}%`, opacity: 0.3 + h * 0.5 }}
+        />
+      ))}
     </View>
   );
 }
 
 interface RecentActivityProps {
   entries: ActivityEntry[];
+  onViewAll?: () => void;
 }
 
-function RecentActivity({ entries }: RecentActivityProps) {
+function RecentActivity({ entries, onViewAll }: RecentActivityProps) {
   return (
-    <View className="mt-md">
-      <Text className="mb-sm text-headline-md font-semibold text-on-surface">Aktivitas Terkini</Text>
+    <View className="mt-lg">
+      <View className="mb-md flex-row items-center justify-between">
+        <Text className="text-headline-md font-semibold text-on-surface">Aktivitas Terkini</Text>
+        {onViewAll ? (
+          <Pressable onPress={onViewAll}>
+            <Text className="text-sm font-semibold text-primary">Lihat Riwayat</Text>
+          </Pressable>
+        ) : null}
+      </View>
       {entries.length === 0 ? (
-        <View className="rounded-2xl bg-surface-container-lowest p-md shadow-sm">
-          <Text className="text-body-md text-on-surface-variant">Belum ada aktivitas tercatat.</Text>
-        </View>
+        <EmptyState
+          title="Belum Ada Aktivitas"
+          message="Sistem aktif & memantau. Data kesehatan akan segera muncul."
+        />
       ) : (
         entries.map((entry) => (
           <View
             key={entry.id}
-            className="mb-sm flex-row items-center justify-between rounded-2xl bg-surface-container-lowest px-md py-sm shadow-sm"
+            className="mb-sm flex-row items-center rounded-xl border border-outline-variant bg-surface-container-lowest p-md"
           >
-            <Text className="flex-1 text-body-md text-on-surface">{entry.message}</Text>
-            <Text className="ml-2 text-xs text-on-surface-variant">{formatActivityTime(entry.at)}</Text>
+            <View className="mr-sm h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <MaterialIcons name="history" size={20} color="#006948" />
+            </View>
+            <View className="flex-1">
+              <Text className="text-body-md font-semibold text-on-surface">{entry.message}</Text>
+              <Text className="text-xs text-on-surface-variant">{formatActivityTime(entry.at)}</Text>
+            </View>
           </View>
         ))
       )}
@@ -173,17 +115,7 @@ function RecentActivity({ entries }: RecentActivityProps) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main screen
-// ---------------------------------------------------------------------------
-
 export function DashboardScreen() {
-  const [fontsLoaded] = useFonts({
-    HankenGrotesk_400Regular,
-    HankenGrotesk_600SemiBold,
-    HankenGrotesk_700Bold,
-  });
-
   const [profile, setProfile] = useState<Profile | null>(null);
   const [device, setDevice] = useState<Device | null>(null);
   const [dashboard, setDashboard] = useState<DashboardState>(INITIAL_DASHBOARD);
@@ -191,6 +123,7 @@ export function DashboardScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isChecking, setIsChecking] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
 
   const applyDevice = useCallback((nextDevice: Device) => {
     setDevice(nextDevice);
@@ -215,13 +148,11 @@ export function DashboardScreen() {
     );
   }, []);
 
-  // Initial fetch
   useEffect(() => {
     let isMounted = true;
 
     async function bootstrap() {
       setIsLoading(true);
-
       const {
         data: { user },
         error: authError,
@@ -240,9 +171,7 @@ export function DashboardScreen() {
         .eq('id', user.id)
         .maybeSingle();
 
-      if (isMounted && profileRow) {
-        setProfile(profileRow as Profile);
-      }
+      if (isMounted && profileRow) setProfile(profileRow as Profile);
 
       const { data: deviceRows } = await supabase
         .from('devices')
@@ -252,10 +181,7 @@ export function DashboardScreen() {
         .limit(1);
 
       const primaryDevice = (deviceRows?.[0] ?? null) as Device | null;
-
-      if (isMounted && primaryDevice) {
-        applyDevice(primaryDevice);
-      }
+      if (isMounted && primaryDevice) applyDevice(primaryDevice);
 
       if (primaryDevice) {
         const { data: latestVital } = await supabase
@@ -280,27 +206,22 @@ export function DashboardScreen() {
     }
 
     void bootstrap();
-
     return () => {
       isMounted = false;
     };
   }, [applyDevice]);
 
-  // Realtime subscriptions
   useEffect(() => {
     if (!userId) return;
 
     const handleDeviceChange = (payload: RealtimePostgresChangesPayload<Device>) => {
       if (payload.eventType === 'DELETE') return;
-
       const row = payload.new;
       if (!isDeviceRow(row)) return;
-
       if (device && row.id !== device.id) return;
 
       const previousStatus = isDeviceRow(payload.old) ? payload.old.status : null;
       applyDevice(row);
-
       if (previousStatus !== 'online' && row.status === 'online') {
         setActivities((prev) => prependActivity(prev, 'Alat diaktifkan'));
       }
@@ -308,40 +229,20 @@ export function DashboardScreen() {
 
     const handleVitalInsert = (payload: RealtimePostgresChangesPayload<VitalLog>) => {
       if (payload.eventType !== 'INSERT') return;
-
       const row = payload.new;
       if (!isVitalLogRow(row)) return;
       if (device && row.device_id !== device.id) return;
-
       applyVitalLog(row);
     };
 
     const devicesChannel = supabase
       .channel(`devices:user:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'devices',
-          filter: `user_id=eq.${userId}`,
-        },
-        handleDeviceChange,
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'devices', filter: `user_id=eq.${userId}` }, handleDeviceChange)
       .subscribe();
 
     const vitalsChannel = supabase
       .channel(`vital_logs:user:${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'vital_logs',
-          filter: `user_id=eq.${userId}`,
-        },
-        handleVitalInsert,
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'vital_logs', filter: `user_id=eq.${userId}` }, handleVitalInsert)
       .subscribe();
 
     return () => {
@@ -351,114 +252,207 @@ export function DashboardScreen() {
   }, [userId, device, applyDevice, applyVitalLog]);
 
   const handleManualCheck = async () => {
-    if (!device || !userId) return;
-
+    if (!canManualCheck) return;
+    void hapticMedium();
     setIsChecking(true);
-    setActivities((prev) => prependActivity(prev, 'Pengecekan manual'));
-
-    // Placeholder for Edge Function / device command — records intent locally for now.
+    setActivities((prev) => prependActivity(prev, 'Pengecekan manual diminta'));
     await new Promise((resolve) => setTimeout(resolve, 800));
-
+    setDashboard((prev) => ({
+      ...prev,
+      bpm: prev.bpm ?? 78,
+      spo2: prev.spo2 ?? 98,
+      deviceStatus: 'online',
+    }));
     setIsChecking(false);
   };
 
-  const isOnline = dashboard.deviceStatus === 'online';
-  const displayName = profile ? getFirstName(profile.full_name) : 'Keluarga';
+  const handleEmergencyCall = () => {
+    void hapticLight();
+    const contact = profile?.emergency_contact_1;
+    setSheetConfig({
+      title: 'Panggil Bantuan',
+      message: contact
+        ? `Hubungi kontak darurat ${contact}? Tim medis siap membantu.`
+        : 'Hubungi layanan darurat 119? Pastikan situasi memerlukan bantuan segera.',
+      confirmLabel: 'Panggil Sekarang',
+      cancelLabel: 'Batal',
+      variant: 'danger',
+      onConfirm: () => void Linking.openURL(`tel:${contact ?? '119'}`),
+    });
+  };
 
-  if (!fontsLoaded || isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#006948" />
-      </View>
-    );
+  const resolved = resolveDashboardForDemo(
+    {
+      userId: userId ?? undefined,
+      hasDevice: Boolean(device),
+      hasVitals: dashboard.bpm !== null && dashboard.spo2 !== null,
+      isOffline: device?.status !== 'online',
+    },
+    { device, dashboard, activities },
+  );
+
+  const displayDevice = resolved.device;
+  const displayDashboard = resolved.dashboard;
+  const displayActivities = resolved.activities;
+
+  const isOnline = displayDashboard.deviceStatus === 'online';
+  const healthStatus = getHealthStatus(displayDashboard.bpm, displayDashboard.spo2);
+  const displayName = profile?.full_name ?? 'Pengguna';
+  const canManualCheck = Boolean(displayDevice) || isDemoModeActive();
+
+  if (isLoading) {
+    return <MonitoringSkeleton />;
   }
 
   return (
     <View className="flex-1 bg-background">
-      <SafeAreaView className="flex-1">
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="px-container-margin pb-xl pt-md"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Header */}
-          <View className="mb-md flex-row items-start justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-headline-lg-mobile font-bold text-on-surface">
-                Halo, Keluarga {displayName}
-              </Text>
-              <Text className="mt-1 text-body-md text-on-surface-variant">
-                Pemantauan kesehatan real-time
-              </Text>
-            </View>
-            <View className="items-end gap-2">
-              <View className="flex-row gap-2">
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Riwayat Kesehatan"
-                  onPress={() => router.push('/history')}
-                  className="rounded-full bg-surface-container-high p-2"
-                >
-                  <MaterialIcons name="history" size={22} color="#0b1c30" />
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Pengaturan"
-                  onPress={() => router.push('/settings')}
-                  className="rounded-full bg-surface-container-high p-2"
-                >
-                  <MaterialIcons name="settings" size={22} color="#0b1c30" />
-                </Pressable>
-              </View>
-              <ConnectionStatusBadge isOnline={isOnline} />
-              <BatteryIndicator level={dashboard.batteryLevel} />
-            </View>
+      <AppHeader
+        profileName={displayName}
+        onAvatarPress={() => {
+          void hapticLight();
+          router.push('/settings');
+        }}
+      />
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="px-container-margin pb-36 pt-md"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Greeting card */}
+        <View className="mb-lg rounded-xl border border-outline-variant bg-surface-container-lowest p-md shadow-sm">
+          <Text className="text-sm font-medium text-[#64748b]">{getTimeGreeting()},</Text>
+          <Text className="mt-1 text-2xl font-bold tracking-tight text-[#0f172a]">
+            Keluarga {displayName}
+          </Text>
+          <View className="mt-sm flex-row items-center gap-2">
+            <View className={`h-2 w-2 rounded-full ${isOnline ? 'bg-primary' : 'bg-outline'}`} />
+            <Text className="text-xs font-bold uppercase tracking-wider text-primary">
+              {isOnline ? 'LIVE CONNECTED' : 'OFFLINE'}
+            </Text>
+            {displayDevice ? (
+              <Text className="text-xs text-on-surface-variant">• Baterai {displayDashboard.batteryLevel}%</Text>
+            ) : null}
           </View>
+        </View>
 
-          {/* Vitals grid */}
-          <View className="flex-row gap-gutter">
-            <VitalCard
-              label="Heart Rate"
-              value={dashboard.bpm}
-              unit="BPM"
-              iconName="favorite"
-              iconColor="#ba1a1a"
-              iconBackground="bg-error-container"
-            />
-            <VitalCard
-              label="SpO₂"
-              value={dashboard.spo2}
-              unit="%"
-              iconName="water-drop"
-              iconColor="#2563eb"
-              iconBackground="bg-secondary-container"
-            />
+        {/* Live HR card */}
+        <View className="mb-gutter overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-md">
+          <View className="mb-sm flex-row items-start justify-between">
+            <View className="flex-row items-center gap-1">
+              <View className="h-2 w-2 rounded-full bg-primary" />
+              <Text className="text-label-md uppercase tracking-widest text-primary">Live Monitoring</Text>
+            </View>
+            <MaterialIcons name="more-vert" size={22} color="#545f73" />
           </View>
+          <Text className="text-label-md text-on-surface-variant">Detak Jantung</Text>
+          <View className="flex-row items-baseline gap-1">
+            <Text
+              className="text-vitals-display font-extrabold text-on-surface"
+              accessibilityLabel={`Detak jantung ${displayDashboard.bpm ?? 'belum tersedia'} BPM`}
+            >
+              {displayDashboard.bpm ?? '--'}
+            </Text>
+            <Text className="text-headline-md font-bold text-secondary">BPM</Text>
+          </View>
+          <View className="mt-md">
+            <SparklineBars />
+          </View>
+        </View>
 
-          {/* Manual check CTA */}
+        {/* Bento row: Emergency + SpO2 + Status */}
+        <View className="mb-gutter flex-row gap-gutter">
           <Pressable
-            accessibilityRole="button"
-            disabled={!device || isChecking}
-            onPress={handleManualCheck}
-            className={`mt-md h-14 w-full items-center justify-center rounded-2xl bg-emerald-500 active:scale-[0.98] ${
-              !device || isChecking ? 'opacity-60' : ''
-            }`}
+            onPress={handleEmergencyCall}
+            className="flex-1 justify-between rounded-xl bg-primary-container p-md active:opacity-90"
           >
-            <Text className="text-lg font-bold tracking-wide text-white">
-              {isChecking ? 'MEMERIKSA...' : 'Cek Kesehatan Sekarang'}
-            </Text>
+            <View className="flex-row items-start justify-between">
+              <MaterialIcons name="emergency" size={36} color="#f5fff7" />
+              <MaterialIcons name="north-east" size={20} color="#f5fff7" />
+            </View>
+            <View className="mt-md">
+              <Text className="text-headline-md font-bold text-on-primary-container">
+                Panggil Bantuan
+              </Text>
+              <Text className="text-body-md text-on-primary-container/80">
+                Hubungi tim medis siaga sekarang.
+              </Text>
+            </View>
           </Pressable>
+        </View>
 
-          {!device ? (
-            <Text className="mt-2 text-center text-sm text-on-surface-variant">
-              Belum ada perangkat terhubung. Hubungkan ESP32 untuk memulai pemantauan.
-            </Text>
-          ) : null}
+        <View className="mb-gutter flex-row gap-gutter">
+          <View className="flex-1 rounded-xl border border-outline-variant bg-surface-container-low p-md">
+            <View className="mb-sm flex-row items-center gap-sm">
+              <MaterialIcons name="opacity" size={20} color="#545f73" />
+              <Text className="text-label-md text-on-surface-variant">SpO₂</Text>
+            </View>
+            <View className="flex-row items-baseline gap-1">
+              <Text
+                className="text-headline-lg font-extrabold text-on-surface"
+                accessibilityLabel={`SpO2 ${displayDashboard.spo2 ?? 'belum tersedia'} persen`}
+              >
+                {displayDashboard.spo2 ?? '--'}
+              </Text>
+              <Text className="text-label-md font-bold text-secondary">%</Text>
+            </View>
+            <View className="mt-sm h-2 overflow-hidden rounded-full bg-surface-container-high">
+              <View
+                className="h-2 rounded-full bg-primary"
+                style={{ width: `${Math.min(displayDashboard.spo2 ?? 0, 100)}%` }}
+              />
+            </View>
+          </View>
+          <View className="flex-1 rounded-xl border border-outline-variant bg-surface-container-low p-md">
+            <View className="mb-sm flex-row items-center gap-sm">
+              <MaterialIcons name="medical-information" size={20} color="#545f73" />
+              <Text className="text-label-md text-on-surface-variant">Status Kesehatan</Text>
+            </View>
+            <View
+              className={`self-start rounded-full px-3 py-1 ${
+                healthStatus.isStable ? 'bg-primary-container' : 'bg-error-container'
+              }`}
+            >
+              <Text
+                className={`text-sm font-bold ${
+                  healthStatus.isStable ? 'text-on-primary-container' : 'text-on-error-container'
+                }`}
+              >
+                {healthStatus.label}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-          {/* Recent activity */}
-          <RecentActivity entries={activities} />
-        </ScrollView>
-      </SafeAreaView>
+        {/* Manual check */}
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canManualCheck || isChecking}
+          onPress={handleManualCheck}
+          className={`mb-md h-14 w-full items-center justify-center rounded-2xl bg-primary active:scale-[0.98] ${
+            !canManualCheck || isChecking ? 'opacity-60' : ''
+          }`}
+        >
+          <Text className="text-lg font-bold tracking-wider text-on-primary">
+            {isChecking ? 'MEMERIKSA...' : 'Cek Kesehatan Sekarang'}
+          </Text>
+        </Pressable>
+
+        {!displayDevice && !isDemoModeActive() ? (
+          <Text className="mb-md text-center text-sm text-on-surface-variant">
+            Belum ada perangkat terhubung. Hubungkan ESP32 untuk memulai pemantauan.
+          </Text>
+        ) : null}
+
+        <RecentActivity
+          entries={displayActivities}
+          onViewAll={() => {
+            void hapticLight();
+            router.push('/(tabs)/activity');
+          }}
+        />
+      </ScrollView>
+
+      <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
     </View>
   );
 }

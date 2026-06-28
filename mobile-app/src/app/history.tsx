@@ -1,5 +1,5 @@
-import { HistoryScreen } from '@/screens';
+import { Redirect } from 'expo-router';
 
-export default function HistoryRoute() {
-  return <HistoryScreen />;
+export default function HistoryRedirect() {
+  return <Redirect href="/(tabs)/activity" />;
 }
