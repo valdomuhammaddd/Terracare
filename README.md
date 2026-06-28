@@ -6,7 +6,7 @@
 
 <img src="https://img.shields.io/badge/💚_Empathetic_Precision-006948?style=for-the-badge&labelColor=85f8c4&color=006948" alt="Brand" />
 <img src="https://img.shields.io/badge/IoT_+_Cloud_+_Mobile-0b1c30?style=for-the-badge&labelColor=dce9ff&color=0b1c30" alt="Stack" />
-<img src="https://img.shields.io/badge/Sidang_Skripsi_Ready-✓-006948?style=for-the-badge&labelColor=f5fff7" alt="Ready" />
+
 
 <br/>
 
