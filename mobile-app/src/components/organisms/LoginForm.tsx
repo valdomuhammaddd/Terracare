@@ -13,17 +13,29 @@ interface LoginFormProps {
 export function LoginForm({ onSignUpPress }: LoginFormProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
   const { signIn, isLoading, error, clearError } = useAuthStore();
 
   const handleSubmit = async () => {
     clearError();
+    setLocalError(null);
+
+    if (!email.trim()) {
+      setLocalError('Masukkan email Anda.');
+      return;
+    }
+    if (password.length < 6) {
+      setLocalError('Kata sandi minimal 6 karakter.');
+      return;
+    }
+
     await signIn(email.trim(), password);
   };
 
-  const isFormValid = email.trim().length > 0 && password.length >= 6;
+  const displayError = localError ?? error;
 
   return (
-    <View className="w-full">
+    <View style={{ width: '100%', zIndex: 2 }}>
       <View style={authStyles.fieldGap}>
         <AuthFormField
           icon="mail"
@@ -46,24 +58,24 @@ export function LoginForm({ onSignUpPress }: LoginFormProps) {
       </View>
 
       <View style={authStyles.linkRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Lupa Kata Sandi">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Lupa Kata Sandi"
+          hitSlop={8}
+          onPress={() => setLocalError('Fitur reset password akan segera hadir. Hubungi admin.')}
+        >
           <Text style={authStyles.forgotLink}>Lupa Kata Sandi?</Text>
         </Pressable>
       </View>
 
-      {error ? (
+      {displayError ? (
         <View style={authStyles.errorBox}>
-          <Text style={authStyles.errorText}>{error}</Text>
+          <Text style={authStyles.errorText}>{displayError}</Text>
         </View>
       ) : null}
 
-      <View style={authStyles.ctaWrap}>
-        <Button
-          label="MASUK"
-          onPress={handleSubmit}
-          disabled={!isFormValid}
-          isLoading={isLoading}
-        />
+      <View style={[authStyles.ctaWrap, { zIndex: 10 }]}>
+        <Button label="MASUK" onPress={() => void handleSubmit()} isLoading={isLoading} />
       </View>
 
       <View style={authStyles.switchRow}>

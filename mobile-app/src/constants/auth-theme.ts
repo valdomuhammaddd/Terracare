@@ -35,6 +35,7 @@ export const authStyles = StyleSheet.create({
     height: 220,
     borderRadius: 110,
     backgroundColor: 'rgba(16, 185, 129, 0.08)',
+    pointerEvents: 'none',
   },
   brandBlock: {
     alignItems: 'center',

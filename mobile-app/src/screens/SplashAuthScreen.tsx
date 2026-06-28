@@ -33,8 +33,9 @@ export function SplashAuthScreen() {
         >
           <ScrollView
             contentContainerStyle={authStyles.scrollContent}
-            keyboardShouldPersistTaps="handled"
+            keyboardShouldPersistTaps="always"
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
           >
             <View style={authStyles.heroGlow} />
 

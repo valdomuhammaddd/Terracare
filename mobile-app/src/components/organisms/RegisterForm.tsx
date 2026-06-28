@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import { Button } from '@/components/atoms';
 import { AuthFormField } from '@/components/molecules';
@@ -14,18 +14,33 @@ export function RegisterForm({ onLoginPress }: RegisterFormProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
   const { signUp, isLoading, error, clearError } = useAuthStore();
 
   const handleSubmit = async () => {
     clearError();
+    setLocalError(null);
+
+    if (fullName.trim().length < 2) {
+      setLocalError('Masukkan nama lengkap (min. 2 karakter).');
+      return;
+    }
+    if (!email.trim()) {
+      setLocalError('Masukkan email Anda.');
+      return;
+    }
+    if (password.length < 6) {
+      setLocalError('Kata sandi minimal 6 karakter.');
+      return;
+    }
+
     await signUp(email.trim(), password, fullName.trim());
   };
 
-  const isFormValid =
-    fullName.trim().length >= 2 && email.trim().length > 0 && password.length >= 6;
+  const displayError = localError ?? error;
 
   return (
-    <View className="w-full">
+    <View style={{ width: '100%', zIndex: 2 }}>
       <View style={authStyles.fieldGap}>
         <AuthFormField
           icon="person"
@@ -56,19 +71,14 @@ export function RegisterForm({ onLoginPress }: RegisterFormProps) {
         />
       </View>
 
-      {error ? (
+      {displayError ? (
         <View style={[authStyles.errorBox, { marginTop: 16 }]}>
-          <Text style={authStyles.errorText}>{error}</Text>
+          <Text style={authStyles.errorText}>{displayError}</Text>
         </View>
       ) : null}
 
-      <View style={authStyles.ctaWrap}>
-        <Button
-          label="DAFTAR"
-          onPress={handleSubmit}
-          disabled={!isFormValid}
-          isLoading={isLoading}
-        />
+      <View style={[authStyles.ctaWrap, { zIndex: 10 }]}>
+        <Button label="DAFTAR" onPress={() => void handleSubmit()} isLoading={isLoading} />
       </View>
 
       <View style={authStyles.switchRow}>

@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppHeader } from '@/components/organisms/AppHeader';
 import { ActivityListSkeleton } from '@/components/molecules/ActivityListSkeleton';
 import { EmptyState } from '@/components/molecules/EmptyState';
+import { InfoBottomSheet, type InfoSheetConfig } from '@/components/molecules/InfoBottomSheet';
 import { supabase } from '@/lib/supabase';
 import type { EmergencyEvent, HandledStatus, VitalLog } from '@/types/supabase';
 import { hapticLight } from '@/utils/haptics';
@@ -175,9 +176,21 @@ async function fetchHistoryForUser(userId: string): Promise<HistoryItem[]> {
   return mergeHistoryItems(emergencies, vitals);
 }
 
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
+function buildDetailMessage(item: HistoryItem): string {
+  if (item.kind === 'emergency') {
+    return `Insiden ${item.title} terdeteksi pada ${item.subtitle}. Status: ${item.statusLabel}. Tim TerraCare merekam kejadian ini untuk tinjauan caregiver.`;
+  }
+  if (item.heartRateBpm !== null && item.title.includes('Jantung')) {
+    return `Detak Jantung stabil di ${item.heartRateBpm} BPM. ${item.subtitle}. Status pemantauan: ${item.statusLabel}.`;
+  }
+  if (item.spo2Percent !== null) {
+    return `SpO₂ ${item.spo2Percent}% — ${item.statusLabel}. ${item.subtitle}.`;
+  }
+  if (item.heartRateBpm !== null) {
+    return `Detak Jantung stabil di ${item.heartRateBpm} BPM. ${item.subtitle}.`;
+  }
+  return `${item.title} — ${item.subtitle}. Status: ${item.statusLabel}.`;
+}
 
 interface StatusBadgeProps {
   label: string;
@@ -210,9 +223,10 @@ function StatusBadge({ label, variant }: StatusBadgeProps) {
 
 interface HistoryCardProps {
   item: HistoryItem;
+  onPress: (item: HistoryItem) => void;
 }
 
-function HistoryCard({ item }: HistoryCardProps) {
+function HistoryCard({ item, onPress }: HistoryCardProps) {
   const isEmergency = item.kind === 'emergency';
   const isHighAlert =
     isEmergency ||
@@ -247,10 +261,25 @@ function HistoryCard({ item }: HistoryCardProps) {
         : 'STABLE';
 
   return (
-    <View
-      className={`flex-row items-center border-b border-slate-100 px-3 py-4 ${
-        isEmergency ? 'bg-rose-50/30' : ''
-      }`}
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => {
+        void hapticLight();
+        onPress(item);
+      }}
+      style={({ pressed }) => [
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          borderBottomWidth: 1,
+          borderBottomColor: '#f1f5f9',
+          paddingHorizontal: 12,
+          paddingVertical: 16,
+          minHeight: 72,
+          backgroundColor: isEmergency ? 'rgba(254, 242, 242, 0.3)' : 'transparent',
+        },
+        pressed && { opacity: 0.7, backgroundColor: '#f8fafc' },
+      ]}
     >
       <View className={`mr-4 h-9 w-9 items-center justify-center rounded-full ${iconBg}`}>
         <MaterialIcons name={iconName as keyof typeof MaterialIcons.glyphMap} size={20} color={iconColor} />
@@ -271,7 +300,7 @@ function HistoryCard({ item }: HistoryCardProps) {
           {statusText}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -299,6 +328,15 @@ export function HistoryScreen({ embedded = false }: HistoryScreenProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailConfig, setDetailConfig] = useState<InfoSheetConfig | null>(null);
+
+  const openDetail = (item: HistoryItem) => {
+    setDetailConfig({
+      title: item.title,
+      message: buildDetailMessage(item),
+      confirmLabel: 'Tutup',
+    });
+  };
 
   const loadHistory = useCallback(async (isPullRefresh = false) => {
     if (isPullRefresh) {
@@ -407,7 +445,7 @@ export function HistoryScreen({ embedded = false }: HistoryScreenProps) {
           <FlatList
             data={filteredItems}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <HistoryCard item={item} />}
+            renderItem={({ item }) => <HistoryCard item={item} onPress={openDetail} />}
             contentContainerClassName="grow px-container-margin pb-36"
             refreshControl={
               <RefreshControl
@@ -439,6 +477,7 @@ export function HistoryScreen({ embedded = false }: HistoryScreenProps) {
           />
         )}
       </View>
+      <InfoBottomSheet config={detailConfig} onDismiss={() => setDetailConfig(null)} />
     </View>
   );
 }

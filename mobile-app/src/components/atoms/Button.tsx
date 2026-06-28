@@ -11,16 +11,21 @@ interface ButtonProps extends PressableProps {
 const styles = StyleSheet.create({
   primary: {
     height: 56,
+    minHeight: 56,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
     backgroundColor: authColors.primary,
+    zIndex: 2,
   },
   primaryDisabled: {
-    backgroundColor: authColors.surfaceContainerHigh,
+    backgroundColor: '#dce9ff',
+    borderWidth: 2,
+    borderColor: authColors.outlineVariant,
   },
   primaryPressed: {
+    opacity: 0.92,
     transform: [{ scale: 0.98 }],
   },
   primaryLabel: {
@@ -30,7 +35,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   primaryLabelDisabled: {
-    color: 'rgba(61, 74, 66, 0.4)',
+    color: authColors.onSurfaceVariant,
   },
 });
 
@@ -41,6 +46,7 @@ export function Button({
   disabled,
   className,
   style,
+  onPress,
   ...props
 }: ButtonProps & { className?: string }) {
   const isDisabled = disabled || isLoading;
@@ -50,6 +56,7 @@ export function Button({
       <Pressable
         accessibilityRole="button"
         disabled={isDisabled}
+        onPress={onPress}
         className={`items-center justify-center rounded-full px-4 py-2 ${className ?? ''}`}
         style={style}
         {...props}
@@ -62,11 +69,13 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={isDisabled}
+      disabled={isLoading}
+      onPress={onPress}
+      hitSlop={4}
       style={({ pressed }) => [
         styles.primary,
         isDisabled && styles.primaryDisabled,
-        pressed && !isDisabled && styles.primaryPressed,
+        pressed && !isLoading && styles.primaryPressed,
         typeof style === 'object' ? style : undefined,
       ]}
       className={className}
