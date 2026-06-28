@@ -1,3 +1,9 @@
+export { AppHeader } from './AppHeader';
+export { AuthForm } from './AuthForm';
+export { CustomTabBar } from './CustomTabBar';
 export { EmergencyOverlay } from './EmergencyOverlay';
+export { ErrorBoundary } from './ErrorBoundary';
 export { LoginForm } from './LoginForm';
+export { RegisterForm } from './RegisterForm';
+export { SosFab } from './SosFab';
 export { SplashOverlay } from './SplashOverlay';

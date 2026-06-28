@@ -1,3 +1,4 @@
+import type { Session, User } from '@supabase/supabase-js';
 import { create } from 'zustand';
 
 import { supabase } from '@/lib/supabase';
@@ -10,10 +11,13 @@ interface AuthState {
   isLoading: boolean;
   isAuthReady: boolean;
   isAuthenticated: boolean;
+  user: User | null;
+  session: Session | null;
   userRole: AppRole | null;
   profile: Profile | null;
   error: string | null;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signOut: () => Promise<void>;
   initializeAuth: () => Promise<void>;
   clearError: () => void;
@@ -34,10 +38,15 @@ async function fetchProfileForUser(userId: string): Promise<Profile | null> {
   return data as Profile;
 }
 
+let bootstrapPromise: Promise<void> | null = null;
+let authListenerRegistered = false;
+
 export const useAuthStore = create<AuthState>((set, get) => ({
-  isLoading: false,
+  isLoading: true,
   isAuthReady: false,
   isAuthenticated: false,
+  user: null,
+  session: null,
   userRole: null,
   profile: null,
   error: null,
@@ -52,6 +61,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         isLoading: false,
         error: error?.message ?? 'Login gagal',
         isAuthenticated: false,
+        user: null,
+        session: null,
         userRole: null,
         profile: null,
       });
@@ -64,6 +75,59 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({
       isLoading: false,
       isAuthenticated: true,
+      user: data.user,
+      session: data.session,
+      userRole: appRole,
+      profile,
+      error: null,
+    });
+  },
+
+  signUp: async (email: string, password: string, fullName: string) => {
+    set({ isLoading: true, error: null });
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName },
+      },
+    });
+
+    if (error || !data.user) {
+      set({
+        isLoading: false,
+        error: error?.message ?? 'Pendaftaran gagal',
+        isAuthenticated: false,
+        user: null,
+        session: null,
+        userRole: null,
+        profile: null,
+      });
+      return;
+    }
+
+    if (!data.session) {
+      set({
+        isLoading: false,
+        error: 'Akun dibuat. Periksa email Anda untuk verifikasi, lalu masuk.',
+        isAuthenticated: false,
+        user: null,
+        session: null,
+        userRole: null,
+        profile: null,
+      });
+      return;
+    }
+
+    const profile = await fetchProfileForUser(data.user.id);
+    const appRole = profile ? normalizeAppRole(profile.role) : 'user';
+
+    set({
+      isLoading: false,
+      isAuthenticated: true,
+      user: data.user,
+      session: data.session,
       userRole: appRole,
       profile,
       error: null,
@@ -77,6 +141,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       isLoading: false,
       isAuthenticated: false,
       isAuthReady: true,
+      user: null,
+      session: null,
       userRole: null,
       profile: null,
       error: null,
@@ -85,51 +151,68 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initializeAuth: async () => {
     if (get().isAuthReady) return;
+    if (bootstrapPromise) return bootstrapPromise;
 
-    set({ isLoading: true });
+    bootstrapPromise = (async () => {
+      set({ isLoading: true });
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
 
-    if (session?.user) {
-      const profile = await fetchProfileForUser(session.user.id);
-      const appRole = profile ? normalizeAppRole(profile.role) : 'user';
+        if (session?.user) {
+          const profile = await fetchProfileForUser(session.user.id);
+          const appRole = profile ? normalizeAppRole(profile.role) : 'user';
 
-      set({
-        isAuthenticated: true,
-        userRole: appRole,
-        profile,
-        isAuthReady: true,
-        isLoading: false,
-      });
-    } else {
-      set({
-        isAuthenticated: false,
-        userRole: null,
-        profile: null,
-        isAuthReady: true,
-        isLoading: false,
-      });
-    }
+          set({
+            isAuthenticated: true,
+            user: session.user,
+            session,
+            userRole: appRole,
+            profile,
+          });
+        } else {
+          set({
+            isAuthenticated: false,
+            user: null,
+            session: null,
+            userRole: null,
+            profile: null,
+          });
+        }
+      } finally {
+        set({ isAuthReady: true, isLoading: false });
+      }
 
-    supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      if (nextSession?.user) {
-        const profile = await fetchProfileForUser(nextSession.user.id);
-        const appRole = profile ? normalizeAppRole(profile.role) : 'user';
-        set({
-          isAuthenticated: true,
-          userRole: appRole,
-          profile,
-        });
-      } else {
-        set({
-          isAuthenticated: false,
-          userRole: null,
-          profile: null,
+      if (!authListenerRegistered) {
+        authListenerRegistered = true;
+
+        supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+          if (nextSession?.user) {
+            const profile = await fetchProfileForUser(nextSession.user.id);
+            const appRole = profile ? normalizeAppRole(profile.role) : 'user';
+            set({
+              isAuthenticated: true,
+              user: nextSession.user,
+              session: nextSession,
+              userRole: appRole,
+              profile,
+            });
+          } else {
+            set({
+              isAuthenticated: false,
+              user: null,
+              session: null,
+              userRole: null,
+              profile: null,
+            });
+          }
         });
       }
-    });
+    })();
+
+    return bootstrapPromise;
   },
 
   clearError: () => set({ error: null }),

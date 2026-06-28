@@ -1,14 +1,7 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import {
-  HankenGrotesk_400Regular,
-  HankenGrotesk_600SemiBold,
-  HankenGrotesk_700Bold,
-  useFonts,
-} from '@expo-google-fonts/hanken-grotesk';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   RefreshControl,
@@ -17,8 +10,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AppHeader } from '@/components/organisms/AppHeader';
+import { ActivityListSkeleton } from '@/components/molecules/ActivityListSkeleton';
+import { EmptyState } from '@/components/molecules/EmptyState';
 import { supabase } from '@/lib/supabase';
 import type { EmergencyEvent, HandledStatus, VitalLog } from '@/types/supabase';
+import { hapticLight } from '@/utils/haptics';
+import { shouldUseMockFallback } from '@/constants/demo-config';
+import { MockDataService } from '@/services/MockDataService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,10 +73,8 @@ function formatHistorySubtitle(iso: string): string {
 }
 
 function emergencyTitle(event: EmergencyEvent): string {
-  if (event.fall_type === 'hard') {
-    return 'Insiden Jatuh Keras';
-  }
-  return 'Insiden Pingsan (Soft Fall)';
+  if (event.fall_type === 'hard') return 'Fall Detection';
+  return 'Fall Detection';
 }
 
 function emergencyStatus(handledStatus: HandledStatus): {
@@ -123,16 +120,17 @@ function mapEmergencyToHistory(event: EmergencyEvent, vitals: VitalLog[]): Histo
 }
 
 function mapVitalToHistory(vital: VitalLog): HistoryItem {
+  const isLowSpo2 = vital.spo2_percent < 92;
   return {
     id: `vital-${vital.id}`,
     kind: 'vital',
     timestamp: vital.recorded_at,
-    title: 'Pengecekan Rutin',
+    title: isLowSpo2 ? 'SpO2' : 'Heart Rate',
     subtitle: formatHistorySubtitle(vital.recorded_at),
     heartRateBpm: vital.heart_rate_bpm,
     spo2Percent: vital.spo2_percent,
-    statusLabel: 'Aman',
-    statusVariant: 'safe',
+    statusLabel: isLowSpo2 ? 'Perhatian' : 'Aman',
+    statusVariant: isLowSpo2 ? 'pending' : 'safe',
   };
 }
 
@@ -216,35 +214,62 @@ interface HistoryCardProps {
 
 function HistoryCard({ item }: HistoryCardProps) {
   const isEmergency = item.kind === 'emergency';
+  const isHighAlert =
+    isEmergency ||
+    (item.heartRateBpm !== null && item.heartRateBpm > 100) ||
+    (item.spo2Percent !== null && item.spo2Percent < 92);
 
-  const iconBg = isEmergency ? 'bg-error-container' : 'bg-primary-container';
-  const iconName = isEmergency ? 'crisis-alert' : 'check-circle';
-  const iconColor = isEmergency ? '#ba1a1a' : '#006948';
+  const iconBg = isHighAlert ? 'bg-rose-50' : 'bg-emerald-50';
+  const iconName = isEmergency
+    ? 'warning'
+    : item.spo2Percent !== null && item.title === 'SpO2'
+      ? 'opacity'
+      : 'favorite';
+  const iconColor = isHighAlert ? '#ba1a1a' : '#006948';
 
-  const vitalsText =
-    item.heartRateBpm !== null && item.spo2Percent !== null
-      ? `HR: ${item.heartRateBpm} | SpO2: ${item.spo2Percent}%`
-      : 'HR: -- | SpO2: --';
+  const valueText =
+    isEmergency
+      ? 'Terdeteksi'
+      : item.heartRateBpm !== null && item.title.includes('Jantung')
+        ? `${item.heartRateBpm} BPM`
+        : item.spo2Percent !== null
+          ? `${item.spo2Percent}%`
+          : item.heartRateBpm !== null
+            ? `${item.heartRateBpm} BPM`
+            : '--';
+
+  const statusText = isEmergency
+    ? 'CRITICAL'
+    : isHighAlert
+      ? 'HIGH ALERT'
+      : item.statusVariant === 'safe'
+        ? 'OPTIMAL'
+        : 'STABLE';
 
   return (
     <View
-      className="mb-sm flex-row items-center rounded-2xl bg-surface-container-lowest p-md shadow-sm"
-      style={{ elevation: 2 }}
+      className={`flex-row items-center border-b border-slate-100 px-3 py-4 ${
+        isEmergency ? 'bg-rose-50/30' : ''
+      }`}
     >
-      <View className={`mr-sm h-12 w-12 items-center justify-center rounded-full ${iconBg}`}>
-        <MaterialIcons name={iconName} size={24} color={iconColor} />
+      <View className={`mr-4 h-9 w-9 items-center justify-center rounded-full ${iconBg}`}>
+        <MaterialIcons name={iconName as keyof typeof MaterialIcons.glyphMap} size={20} color={iconColor} />
       </View>
-
-      <View className="min-w-0 flex-1 pr-2">
-        <Text className="text-base font-bold text-on-surface" numberOfLines={1}>
-          {item.title}
+      <View className="min-w-0 flex-1">
+        <Text className="text-sm font-semibold text-slate-800">{item.title}</Text>
+        <Text className="text-xs text-slate-400">{item.subtitle}</Text>
+      </View>
+      <View className="items-end">
+        <Text className={`text-base font-bold ${isHighAlert ? 'text-rose-600' : 'text-slate-900'}`}>
+          {valueText}
         </Text>
-        <Text className="mt-0.5 text-sm text-on-surface-variant">{item.subtitle}</Text>
-      </View>
-
-      <View className="items-end gap-1">
-        <Text className="text-xs font-medium text-on-surface-variant">{vitalsText}</Text>
-        <StatusBadge label={item.statusLabel} variant={item.statusVariant} />
+        <Text
+          className={`text-[10px] font-bold uppercase tracking-tighter ${
+            isHighAlert ? 'text-rose-600' : 'text-primary'
+          }`}
+        >
+          {statusText}
+        </Text>
       </View>
     </View>
   );
@@ -252,16 +277,8 @@ function HistoryCard({ item }: HistoryCardProps) {
 
 function EmptyHistoryState() {
   return (
-    <View className="mt-xl items-center px-md py-xl">
-      <View className="mb-md h-20 w-20 items-center justify-center rounded-full bg-surface-container">
-        <MaterialIcons name="history" size={40} color="#586377" />
-      </View>
-      <Text className="text-center text-headline-md font-semibold text-on-surface">
-        Belum ada riwayat aktivitas
-      </Text>
-      <Text className="mt-2 text-center text-body-md text-on-surface-variant">
-        Riwayat pemeriksaan dan insiden darurat akan muncul di sini.
-      </Text>
+    <View className="py-lg">
+      <EmptyState />
     </View>
   );
 }
@@ -270,14 +287,15 @@ function EmptyHistoryState() {
 // Main screen
 // ---------------------------------------------------------------------------
 
-export function HistoryScreen() {
-  const [fontsLoaded] = useFonts({
-    HankenGrotesk_400Regular,
-    HankenGrotesk_600SemiBold,
-    HankenGrotesk_700Bold,
-  });
+type HistoryFilter = 'all' | 'emergency' | 'vital';
 
+interface HistoryScreenProps {
+  embedded?: boolean;
+}
+
+export function HistoryScreen({ embedded = false }: HistoryScreenProps) {
   const [items, setItems] = useState<HistoryItem[]>([]);
+  const [filter, setFilter] = useState<HistoryFilter>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -301,10 +319,16 @@ export function HistoryScreen() {
       }
 
       const history = await fetchHistoryForUser(user.id);
-      setItems(history);
+      const useMock = shouldUseMockFallback({ isEmpty: history.length === 0 });
+      setItems(useMock ? MockDataService.getHistoryEntries() : history);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Gagal memuat riwayat';
-      setError(message);
+      if (shouldUseMockFallback({ isEmpty: true })) {
+        setItems(MockDataService.getHistoryEntries());
+        setError(null);
+      } else {
+        setError(message);
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -315,52 +339,76 @@ export function HistoryScreen() {
     void loadHistory();
   }, [loadHistory]);
 
-  if (!fontsLoaded) {
+  const filteredItems = items.filter((item) => {
+    if (filter === 'emergency') return item.kind === 'emergency';
+    if (filter === 'vital') return item.kind === 'vital';
+    return true;
+  });
+
+  const cycleFilter = () => {
+    void hapticLight();
+    setFilter((prev) => (prev === 'all' ? 'emergency' : prev === 'emergency' ? 'vital' : 'all'));
+  };
+
+  const filterLabel =
+    filter === 'all' ? 'Semua' : filter === 'emergency' ? 'Darurat' : 'Vital';
+
+  if (isLoading && items.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center bg-background">
-        <ActivityIndicator size="large" color="#006948" />
+      <View className="flex-1 bg-background">
+        {embedded ? <AppHeader /> : null}
+        <View className="px-container-margin pt-md">
+          {embedded ? (
+            <Text className="mb-4 text-headline-lg-mobile font-bold text-on-surface">
+              Riwayat Detail
+            </Text>
+          ) : null}
+          <ActivityListSkeleton />
+        </View>
       </View>
     );
   }
 
   return (
     <View className="flex-1 bg-background">
-      <SafeAreaView className="flex-1" edges={['top']}>
-        {/* Header */}
-        <View
-          className="bg-surface-container-lowest px-container-margin pb-md pt-sm shadow-sm"
-          style={{ elevation: 3 }}
-        >
-          <View className="flex-row items-center gap-sm">
+      {embedded ? (
+        <AppHeader />
+      ) : (
+        <SafeAreaView edges={['top']}>
+          <View className="flex-row items-center gap-4 bg-surface px-container-margin py-4">
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Kembali"
               onPress={() => router.back()}
-              className="rounded-full bg-surface-container-high p-2"
+              className="h-10 w-10 items-center justify-center rounded-full active:bg-surface-container-high"
             >
-              <MaterialIcons name="arrow-back" size={22} color="#0b1c30" />
+              <MaterialIcons name="arrow-back" size={22} color="#006948" />
             </Pressable>
-            <View className="flex-1">
-              <Text className="text-headline-lg-mobile font-bold text-on-surface">
-                Riwayat Kesehatan
-              </Text>
-              <Text className="mt-0.5 text-sm text-on-surface-variant">
-                {items.length > 0 ? `${items.length} aktivitas terakhir` : 'Log pemeriksaan & insiden'}
-              </Text>
-            </View>
+            <Text className="text-headline-lg-mobile font-black text-primary">Riwayat Detail</Text>
           </View>
+        </SafeAreaView>
+      )}
+
+      <View className="flex-1">
+        <View className="flex-row items-center justify-between px-container-margin py-6">
+          <View className="flex-row items-center gap-2">
+            <View className="h-2 w-2 rounded-full bg-primary" />
+            <Text className="text-label-md uppercase tracking-widest text-outline">Real-Time Log</Text>
+          </View>
+          <Pressable
+            onPress={cycleFilter}
+            className="flex-row items-center gap-1 rounded-full px-3 py-1 active:bg-primary-container/10"
+          >
+            <MaterialIcons name="filter-list" size={18} color="#006948" />
+            <Text className="text-sm font-semibold text-primary">Filter ({filterLabel})</Text>
+          </Pressable>
         </View>
 
-        {isLoading && items.length === 0 ? (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#006948" />
-          </View>
-        ) : (
+        {isLoading && items.length === 0 ? null : (
           <FlatList
-            data={items}
+            data={filteredItems}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => <HistoryCard item={item} />}
-            contentContainerClassName="grow px-container-margin pb-xl pt-md"
+            contentContainerClassName="grow px-container-margin pb-36"
             refreshControl={
               <RefreshControl
                 refreshing={isRefreshing}
@@ -368,6 +416,13 @@ export function HistoryScreen() {
                 tintColor="#006948"
                 colors={['#006948']}
               />
+            }
+            ListHeaderComponent={
+              embedded ? (
+                <Text className="mb-4 text-headline-lg-mobile font-bold text-on-surface">
+                  Riwayat Detail
+                </Text>
+              ) : null
             }
             ListEmptyComponent={
               error ? (
@@ -379,10 +434,11 @@ export function HistoryScreen() {
                 <EmptyHistoryState />
               )
             }
+            className="mx-container-margin overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
             showsVerticalScrollIndicator={false}
           />
         )}
-      </SafeAreaView>
+      </View>
     </View>
   );
 }

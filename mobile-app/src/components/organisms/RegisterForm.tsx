@@ -1,30 +1,41 @@
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 
 import { Button } from '@/components/atoms';
 import { AuthFormField } from '@/components/molecules';
 import { authStyles } from '@/constants/auth-theme';
 import { useAuthStore } from '@/store/auth-store';
 
-interface LoginFormProps {
-  onSignUpPress?: () => void;
+interface RegisterFormProps {
+  onLoginPress?: () => void;
 }
 
-export function LoginForm({ onSignUpPress }: LoginFormProps) {
+export function RegisterForm({ onLoginPress }: RegisterFormProps) {
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { signIn, isLoading, error, clearError } = useAuthStore();
+  const { signUp, isLoading, error, clearError } = useAuthStore();
 
   const handleSubmit = async () => {
     clearError();
-    await signIn(email.trim(), password);
+    await signUp(email.trim(), password, fullName.trim());
   };
 
-  const isFormValid = email.trim().length > 0 && password.length >= 6;
+  const isFormValid =
+    fullName.trim().length >= 2 && email.trim().length > 0 && password.length >= 6;
 
   return (
     <View className="w-full">
       <View style={authStyles.fieldGap}>
+        <AuthFormField
+          icon="person"
+          placeholder="Masukkan nama lengkap Anda"
+          autoComplete="name"
+          autoCapitalize="words"
+          textContentType="name"
+          value={fullName}
+          onChangeText={setFullName}
+        />
         <AuthFormField
           icon="mail"
           placeholder="Masukkan email Anda"
@@ -38,28 +49,22 @@ export function LoginForm({ onSignUpPress }: LoginFormProps) {
           icon="lock"
           placeholder="Masukkan kata sandi"
           isPassword
-          autoComplete="password"
-          textContentType="password"
+          autoComplete="new-password"
+          textContentType="newPassword"
           value={password}
           onChangeText={setPassword}
         />
       </View>
 
-      <View style={authStyles.linkRow}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Lupa Kata Sandi">
-          <Text style={authStyles.forgotLink}>Lupa Kata Sandi?</Text>
-        </Pressable>
-      </View>
-
       {error ? (
-        <View style={authStyles.errorBox}>
+        <View style={[authStyles.errorBox, { marginTop: 16 }]}>
           <Text style={authStyles.errorText}>{error}</Text>
         </View>
       ) : null}
 
       <View style={authStyles.ctaWrap}>
         <Button
-          label="MASUK"
+          label="DAFTAR"
           onPress={handleSubmit}
           disabled={!isFormValid}
           isLoading={isLoading}
@@ -68,9 +73,9 @@ export function LoginForm({ onSignUpPress }: LoginFormProps) {
 
       <View style={authStyles.switchRow}>
         <Text style={authStyles.switchText}>
-          Belum punya akun?{' '}
-          <Text style={authStyles.switchLink} onPress={onSignUpPress}>
-            Daftar sekarang
+          Sudah punya akun?{' '}
+          <Text style={authStyles.switchLink} onPress={onLoginPress}>
+            Masuk sekarang
           </Text>
         </Text>
       </View>
