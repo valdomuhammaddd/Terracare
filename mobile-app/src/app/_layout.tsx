@@ -11,9 +11,10 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { LogBox } from 'react-native';
+import { ActivityIndicator, LogBox, StyleSheet, View } from 'react-native';
 
 import { GlobalOverlays } from '@/components/organisms/GlobalOverlays';
+import { IntegrityMonitor } from '@/components/organisms/IntegrityMonitor';
 import { AppProviders } from '@/components/providers/AppProviders';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -51,19 +52,43 @@ export default function RootLayout() {
   }, [isAppReady]);
 
   if (!isAppReady) {
-    return null;
+    return (
+      <View style={bootStyles.container}>
+        <ActivityIndicator size="large" color="#006948" />
+      </View>
+    );
   }
 
   return (
     <AppProviders>
-      <GlobalOverlays />
+      <View style={bootStyles.appRoot}>
+        <IntegrityMonitor />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="settings" />
+          <Stack.Screen name="history" />
+          <Stack.Screen name="track" />
+          <Stack.Screen name="family" />
+          <Stack.Screen name="medicine" />
+          <Stack.Screen name="reports" />
+        </Stack>
+        <GlobalOverlays />
+      </View>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="settings" />
-        <Stack.Screen name="history" />
-      </Stack>
     </AppProviders>
   );
 }
+
+const bootStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5fff7',
+  },
+  appRoot: {
+    flex: 1,
+    backgroundColor: '#f5fff7',
+  },
+});

@@ -4,7 +4,19 @@ export const MOCK_BPM = 78;
 export const MOCK_SPO2 = 98;
 export const MOCK_BATTERY = 87;
 export const MOCK_DEVICE_NAME = 'Hub-Alpha-01';
-export const MOCK_DEVICE_MAC = 'AA:BB:CC:DD:EE:01';
+export const MOCK_DEVICE_MAC = 'TC-ALPHA-01';
+
+/** Primary family contact for thesis demo narrative */
+export const MOCK_PRIMARY_CONTACT = {
+  id: 'family-1',
+  name: 'Satria Dwi Anggara',
+  relation: 'Anak / Caregiver Utama',
+  phone: '+62 812-3456-7890',
+  email: 'satria.dwi@terradigital.id',
+  isPrimary: true,
+  avatarInitials: 'SD',
+  lastNotifiedAt: new Date(Date.now() - 12 * 60_000).toISOString(),
+};
 
 export interface MockActivityEntry {
   id: string;
@@ -28,7 +40,39 @@ export interface MockGpsLocation {
   latitude: number;
   longitude: number;
   label: string;
+  street: string;
+  city: string;
   accuracyMeters: number;
+}
+
+export interface MockFamilyMember {
+  id: string;
+  name: string;
+  relation: string;
+  phone: string;
+  email?: string;
+  isPrimary: boolean;
+  avatarInitials: string;
+  lastNotifiedAt?: string;
+}
+
+export interface MockMedicineSchedule {
+  id: string;
+  name: string;
+  dose: string;
+  schedule: string;
+  status: 'taken' | 'pending' | 'missed';
+  lastTakenAt?: string;
+}
+
+export interface MockReportEntry {
+  id: string;
+  title: string;
+  period: string;
+  summary: string;
+  generatedAt: string;
+  type: 'weekly' | 'monthly' | 'incident';
+  status: 'ready' | 'archived';
 }
 
 function minutesAgo(minutes: number): string {
@@ -71,9 +115,10 @@ export const MockDataService = {
 
   getActivityLogs(): MockActivityEntry[] {
     return [
-      { id: 'demo-act-1', message: 'Sistem Terhubung', at: minutesAgo(2) },
-      { id: 'demo-act-2', message: 'Deteksi Detak Jantung Normal', at: minutesAgo(8) },
-      { id: 'demo-act-3', message: 'Mode Pantauan Aktif', at: minutesAgo(15) },
+      { id: 'demo-act-1', message: 'Sistem Terhubung — Hub-Alpha-01', at: minutesAgo(2) },
+      { id: 'demo-act-2', message: 'Deteksi Detak Jantung Normal (78 BPM)', at: minutesAgo(8) },
+      { id: 'demo-act-3', message: 'GPS Aktif — Jl. Sekip Jaya, Palembang', at: minutesAgo(15) },
+      { id: 'demo-act-4', message: 'Kontak Satria Dwi Anggara tersinkron', at: minutesAgo(28) },
     ];
   },
 
@@ -98,7 +143,7 @@ export const MockDataService = {
         id: 'demo-hist-2',
         kind: 'vital',
         timestamp: t2,
-        title: 'Heart Rate',
+        title: 'SpO2',
         subtitle: formatSubtitle(t2),
         heartRateBpm: 76,
         spo2Percent: 97,
@@ -141,14 +186,125 @@ export const MockDataService = {
 
   getGpsLocation(): MockGpsLocation {
     return {
-      latitude: -6.2088,
-      longitude: 106.8456,
-      label: 'Rumah — Jakarta Selatan (Simulasi Demo)',
-      accuracyMeters: 12,
+      latitude: -2.9761,
+      longitude: 104.7754,
+      label: 'Jl. Sekip Jaya, Palembang',
+      street: 'Jl. Sekip Jaya',
+      city: 'Palembang, Sumatera Selatan',
+      accuracyMeters: 8,
     };
+  },
+
+  getFamilyMembers(): MockFamilyMember[] {
+    return [
+      MOCK_PRIMARY_CONTACT,
+      {
+        id: 'family-2',
+        name: 'Rina Anggara',
+        relation: 'Menantu / Caregiver',
+        phone: '+62 813-9876-5432',
+        email: 'rina.anggara@email.com',
+        isPrimary: false,
+        avatarInitials: 'RA',
+        lastNotifiedAt: minutesAgo(120),
+      },
+      {
+        id: 'family-3',
+        name: 'Dr. Ahmad Wijaya',
+        relation: 'Dokter Keluarga',
+        phone: '+62 711-555-0123',
+        isPrimary: false,
+        avatarInitials: 'AW',
+      },
+    ];
+  },
+
+  getPrimaryContact(): MockFamilyMember {
+    return MOCK_PRIMARY_CONTACT;
+  },
+
+  getMedicineSchedule(): MockMedicineSchedule[] {
+    return [
+      {
+        id: 'med-1',
+        name: 'Amlodipine 5mg',
+        dose: '1 tablet',
+        schedule: '08:00 · Pagi',
+        status: 'taken',
+        lastTakenAt: minutesAgo(180),
+      },
+      {
+        id: 'med-2',
+        name: 'Metformin 500mg',
+        dose: '1 tablet',
+        schedule: '12:00 · Siang',
+        status: 'pending',
+      },
+      {
+        id: 'med-3',
+        name: 'Vitamin D3',
+        dose: '1 kapsul',
+        schedule: '20:00 · Malam',
+        status: 'pending',
+      },
+      {
+        id: 'med-4',
+        name: 'Aspirin 80mg',
+        dose: '1 tablet',
+        schedule: '20:00 · Malam',
+        status: 'taken',
+        lastTakenAt: minutesAgo(720),
+      },
+    ];
+  },
+
+  getReports(): MockReportEntry[] {
+    return [
+      {
+        id: 'rep-1',
+        title: 'Laporan Vital Sign Mingguan',
+        period: '22–28 Jun 2026',
+        summary: 'Rata-rata BPM 77 · SpO₂ 98% · Tidak ada insiden darurat. Satria Dwi Anggara menerima 2 notifikasi rutin.',
+        generatedAt: minutesAgo(60),
+        type: 'weekly',
+        status: 'ready',
+      },
+      {
+        id: 'rep-2',
+        title: 'Laporan Aktivitas Bulanan',
+        period: 'Mei 2026',
+        summary: '142 sampel vital · 0 fall detection · Perangkat online 96% waktu.',
+        generatedAt: minutesAgo(1440),
+        type: 'monthly',
+        status: 'ready',
+      },
+      {
+        id: 'rep-3',
+        title: 'Ringkasan Insiden SOS Manual',
+        period: 'Demo Sidang',
+        summary: 'SOS manual terkirim ke Satria Dwi Anggara · Respons < 3 detik · Status resolved.',
+        generatedAt: minutesAgo(30),
+        type: 'incident',
+        status: 'archived',
+      },
+    ];
   },
 
   getInsightChartBars(): number[] {
     return [0.45, 0.62, 0.58, 0.71, 0.68, 0.75, 0.72, 0.78, 0.74, 0.8, 0.76, 0.78];
+  },
+
+  /** Care grid integrity — all 8 features demo-ready */
+  getCareGridReadiness(): Record<string, boolean> {
+    return {
+      emergency: true,
+      vitals: true,
+      reports: true,
+      more: true,
+      insights: true,
+      family: true,
+      medicine: true,
+      track: true,
+    };
   },
 };

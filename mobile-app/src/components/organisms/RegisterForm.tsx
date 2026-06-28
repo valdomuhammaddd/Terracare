@@ -77,7 +77,7 @@ export function RegisterForm({ onLoginPress }: RegisterFormProps) {
         </View>
       ) : null}
 
-      <View style={[authStyles.ctaWrap, { zIndex: 10 }]}>
+      <View style={authStyles.ctaWrap}>
         <Button label="DAFTAR" onPress={() => void handleSubmit()} isLoading={isLoading} />
       </View>
 

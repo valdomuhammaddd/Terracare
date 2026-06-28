@@ -29,15 +29,18 @@ export function SplashAuthScreen() {
       <SafeAreaView style={authStyles.screen} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={authStyles.screen}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
           <ScrollView
+            style={{ flex: 1 }}
             contentContainerStyle={authStyles.scrollContent}
             keyboardShouldPersistTaps="always"
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             <View style={authStyles.brandBlock}>
-              <View className="mb-4 h-20 w-20 items-center justify-center">
+              <View style={authStyles.brandIconWrap}>
                 <ShieldIcon size={80} />
               </View>
               <BrandLogo />

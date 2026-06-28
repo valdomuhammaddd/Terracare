@@ -10,6 +10,7 @@ interface ButtonProps extends PressableProps {
 
 const styles = StyleSheet.create({
   primary: {
+    position: 'relative',
     height: 56,
     minHeight: 56,
     width: '100%',
@@ -17,7 +18,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
     backgroundColor: authColors.primary,
-    zIndex: 2,
+    zIndex: 999,
+    elevation: 12,
   },
   primaryDisabled: {
     backgroundColor: '#dce9ff',

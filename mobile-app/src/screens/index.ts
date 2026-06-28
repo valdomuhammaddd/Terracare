@@ -1,7 +1,11 @@
 export { AdminDashboardScreen } from './AdminDashboardScreen';
 export { CareScreen } from './CareScreen';
 export { DashboardScreen } from './DashboardScreen';
+export { FamilyScreen } from './FamilyScreen';
 export { HistoryScreen } from './HistoryScreen';
 export { InsightsScreen } from './InsightsScreen';
+export { MedicineScreen } from './MedicineScreen';
+export { ReportsScreen } from './ReportsScreen';
 export { SettingsScreen } from './SettingsScreen';
 export { SplashAuthScreen } from './SplashAuthScreen';
+export { TrackScreen } from './TrackScreen';

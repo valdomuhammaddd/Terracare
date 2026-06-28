@@ -305,23 +305,30 @@ export function DashboardScreen() {
   const displayName = profile?.full_name ?? 'Pengguna';
   const canManualCheck = Boolean(displayDevice) || isDemoModeActive();
 
+  const headerProps = {
+    profileName: displayName,
+    onNotificationPress: () => {
+      void hapticLight();
+      setNotificationsOpen(true);
+    },
+    onAvatarPress: () => {
+      void hapticLight();
+      router.push('/settings');
+    },
+  };
+
   if (isLoading) {
-    return <MonitoringSkeleton />;
+    return (
+      <View style={dashStyles.screen}>
+        <AppHeader {...headerProps} />
+        <MonitoringSkeleton hideHeader />
+      </View>
+    );
   }
 
   return (
-    <View className="flex-1 bg-background">
-      <AppHeader
-        profileName={displayName}
-        onNotificationPress={() => {
-          void hapticLight();
-          setNotificationsOpen(true);
-        }}
-        onAvatarPress={() => {
-          void hapticLight();
-          router.push('/settings');
-        }}
-      />
+    <View style={dashStyles.screen}>
+      <AppHeader {...headerProps} />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-container-margin pb-36 pt-md"
@@ -472,6 +479,10 @@ export function DashboardScreen() {
 }
 
 const dashStyles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#f5fff7',
+  },
   helpCard: {
     flex: 1,
     borderRadius: 16,

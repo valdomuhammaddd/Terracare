@@ -6,6 +6,8 @@ import {
   ConfirmBottomSheet,
   type ConfirmSheetConfig,
 } from '@/components/molecules/ConfirmBottomSheet';
+import { isDemoModeActive } from '@/constants/demo-config';
+import { MockDataService } from '@/services/MockDataService';
 import { useAuthStore } from '@/store/auth-store';
 import { useEmergencyUiStore } from '@/store/emergency-ui-store';
 import { hapticError } from '@/utils/haptics';
@@ -27,15 +29,19 @@ export function SosFab() {
       onConfirm: () => {
         setSheetConfig(null);
         if (!user?.id) {
-          Alert.alert('Supabase Error', JSON.stringify('Sesi tidak aktif. Silakan masuk kembali.'));
+          if (!isDemoModeActive()) {
+            Alert.alert('Supabase Error', JSON.stringify('Sesi tidak aktif. Silakan masuk kembali.'));
+          }
           return;
         }
         void (async () => {
           try {
             await startFamilyAlert(user.id);
           } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            Alert.alert('Supabase Error', JSON.stringify(message));
+            if (!isDemoModeActive()) {
+              const message = error instanceof Error ? error.message : String(error);
+              Alert.alert('Supabase Error', JSON.stringify(message));
+            }
           }
         })();
       },
