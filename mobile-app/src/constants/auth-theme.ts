@@ -27,16 +27,6 @@ export const authStyles = StyleSheet.create({
     paddingBottom: 48,
     alignItems: 'center',
   },
-  heroGlow: {
-    position: 'absolute',
-    top: -40,
-    alignSelf: 'center',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    pointerEvents: 'none',
-  },
   brandBlock: {
     alignItems: 'center',
     marginBottom: 28,

@@ -24,7 +24,7 @@ export function SplashAuthScreen() {
 
   return (
     <View style={authStyles.screen}>
-      <SplashOverlay visible={showSplash} />
+      {showSplash ? <SplashOverlay /> : null}
 
       <SafeAreaView style={authStyles.screen} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
@@ -35,10 +35,7 @@ export function SplashAuthScreen() {
             contentContainerStyle={authStyles.scrollContent}
             keyboardShouldPersistTaps="always"
             showsVerticalScrollIndicator={false}
-            nestedScrollEnabled
           >
-            <View style={authStyles.heroGlow} />
-
             <View style={authStyles.brandBlock}>
               <View className="mb-4 h-20 w-20 items-center justify-center">
                 <ShieldIcon size={80} />

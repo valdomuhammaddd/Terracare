@@ -3,6 +3,7 @@ import { create } from 'zustand';
 
 import { supabase } from '@/lib/supabase';
 import type { Profile, UserRole } from '@/types/supabase';
+import { useEmergencyUiStore } from '@/store/emergency-ui-store';
 
 /** Normalized app role used for routing (admin vs standard user). */
 export type AppRole = 'admin' | 'user';
@@ -136,6 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   signOut: async () => {
     set({ isLoading: true });
+    useEmergencyUiStore.getState().reset();
     await supabase.auth.signOut();
     set({
       isLoading: false,

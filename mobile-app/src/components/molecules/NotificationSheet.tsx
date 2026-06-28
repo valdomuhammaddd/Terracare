@@ -49,6 +49,10 @@ export function NotificationSheet({ visible, onDismiss }: NotificationSheetProps
     [],
   );
 
+  if (!visible) {
+    return null;
+  }
+
   return (
     <BottomSheetModal
       ref={ref}
