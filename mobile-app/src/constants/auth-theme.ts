@@ -24,8 +24,15 @@ export const authStyles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
-    paddingBottom: 48,
+    paddingBottom: 120,
     alignItems: 'center',
+  },
+  brandIconWrap: {
+    marginBottom: 16,
+    height: 80,
+    width: 80,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   brandBlock: {
     alignItems: 'center',
@@ -44,6 +51,8 @@ export const authStyles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 24,
     elevation: 6,
+    zIndex: 5,
+    overflow: 'visible',
   },
   tagline: {
     marginTop: 20,
@@ -81,6 +90,9 @@ export const authStyles = StyleSheet.create({
   },
   ctaWrap: {
     marginTop: 20,
+    position: 'relative',
+    zIndex: 999,
+    elevation: 12,
   },
   switchRow: {
     marginTop: 20,

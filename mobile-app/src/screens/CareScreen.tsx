@@ -1,13 +1,12 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import {
   ConfirmBottomSheet,
   type ConfirmSheetConfig,
 } from '@/components/molecules/ConfirmBottomSheet';
-import { ComingSoonBottomSheet } from '@/components/molecules/ComingSoonBottomSheet';
 import { AppHeader } from '@/components/organisms/AppHeader';
 import { MockDataService } from '@/services/MockDataService';
 import { useAuthStore } from '@/store/auth-store';
@@ -20,125 +19,57 @@ interface QuickAction {
   icon: keyof typeof MaterialIcons.glyphMap;
   bgColor: string;
   iconColor: string;
-  onPress: () => void;
+  route: string | 'sos';
 }
+
+const GRID_ACTIONS: QuickAction[] = [
+  { id: 'emergency', label: 'Emergency', icon: 'emergency', bgColor: '#006948', iconColor: '#f5fff7', route: 'sos' },
+  { id: 'vitals', label: 'Vitals', icon: 'favorite', bgColor: '#d7e3ff', iconColor: '#586377', route: '/(tabs)/monitoring' },
+  { id: 'reports', label: 'Reports', icon: 'event-note', bgColor: '#e8ecf4', iconColor: '#586377', route: '/reports' },
+  { id: 'settings', label: 'More', icon: 'grid-view', bgColor: '#e8ecf4', iconColor: '#586377', route: '/settings' },
+  { id: 'insights', label: 'Insights', icon: 'bar-chart', bgColor: '#e8ecf4', iconColor: '#586377', route: '/(tabs)/insights' },
+  { id: 'family', label: 'Family', icon: 'people', bgColor: '#e8ecf4', iconColor: '#586377', route: '/family' },
+  { id: 'medicine', label: 'Medicine', icon: 'medication', bgColor: '#e8ecf4', iconColor: '#586377', route: '/medicine' },
+  { id: 'track', label: 'Track', icon: 'location-on', bgColor: '#e8ecf4', iconColor: '#586377', route: '/track' },
+];
 
 export function CareScreen() {
   const profile = useAuthStore((s) => s.profile);
   const user = useAuthStore((s) => s.user);
   const startFamilyAlert = useEmergencyUiStore((s) => s.startFamilyAlert);
   const [sheetConfig, setSheetConfig] = useState<ConfirmSheetConfig | null>(null);
-  const [comingSoonFeature, setComingSoonFeature] = useState<string | null>(null);
-
-  const openComingSoon = (featureName: string) => {
-    void hapticLight();
-    setComingSoonFeature(featureName);
-  };
 
   const openEmergencySheet = () => {
     void hapticMedium();
     setSheetConfig({
       title: 'Darurat — Hubungi Keluarga',
-      message:
-        'Sinyal SOS akan dikirim ke kontak keluarga terdaftar dan dicatat di sistem TerraCare. Lanjutkan?',
+      message: `Sinyal SOS akan dikirim ke ${MockDataService.getPrimaryContact().name} dan dicatat di TerraCare Cloud. Lanjutkan?`,
       confirmLabel: 'Kirim SOS',
       cancelLabel: 'Batal',
       variant: 'danger',
       onConfirm: () => {
         setSheetConfig(null);
-        if (user?.id) {
-          void startFamilyAlert(user.id);
-        }
+        if (user?.id) void startFamilyAlert(user.id);
       },
     });
   };
 
-  const actions: QuickAction[] = [
-    {
-      id: 'emergency',
-      label: 'Emergency',
-      icon: 'emergency',
-      bgColor: '#006948',
-      iconColor: '#f5fff7',
-      onPress: openEmergencySheet,
-    },
-    {
-      id: 'vitals',
-      label: 'Vitals',
-      icon: 'favorite',
-      bgColor: '#d7e3ff',
-      iconColor: '#586377',
-      onPress: () => {
-        void hapticLight();
-        router.push('/(tabs)/monitoring');
-      },
-    },
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: 'event-note',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => openComingSoon('Reports'),
-    },
-    {
-      id: 'settings',
-      label: 'More',
-      icon: 'grid-view',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => {
-        void hapticLight();
-        router.push('/settings');
-      },
-    },
-    {
-      id: 'insights',
-      label: 'Insights',
-      icon: 'bar-chart',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => {
-        void hapticLight();
-        router.push('/(tabs)/insights');
-      },
-    },
-    {
-      id: 'family',
-      label: 'Family',
-      icon: 'people',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => openComingSoon('Family'),
-    },
-    {
-      id: 'medicine',
-      label: 'Medicine',
-      icon: 'medication',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => openComingSoon('Medicine'),
-    },
-    {
-      id: 'track',
-      label: 'Track',
-      icon: 'location-on',
-      bgColor: '#e8ecf4',
-      iconColor: '#586377',
-      onPress: () => openComingSoon('Track'),
-    },
-  ];
+  const handleTilePress = (action: QuickAction) => {
+    void hapticLight();
+    if (action.route === 'sos') {
+      openEmergencySheet();
+      return;
+    }
+    router.push(action.route as never);
+  };
 
   const recentLogs = MockDataService.getActivityLogs();
 
   return (
     <View style={styles.screen}>
       <AppHeader
-        profileName={profile?.full_name}
-        onAvatarPress={() => {
-          void hapticLight();
-          router.push('/settings');
-        }}
+        profileName={profile?.full_name ?? 'Pengguna'}
+        onAvatarPress={() => router.push('/settings')}
       />
       <ScrollView
         style={styles.scroll}
@@ -149,6 +80,9 @@ export function CareScreen() {
         <View style={styles.heroCard}>
           <Text style={styles.heroLabel}>Active Monitoring</Text>
           <Text style={styles.heroName}>{profile?.full_name ?? 'Pengguna'}</Text>
+          <Text style={styles.heroContact}>
+            Caregiver: {MockDataService.getPrimaryContact().name}
+          </Text>
           <View style={styles.liveBadge}>
             <MaterialIcons name="fiber-manual-record" size={12} color="#006948" />
             <Text style={styles.liveText}>Live</Text>
@@ -157,13 +91,13 @@ export function CareScreen() {
 
         <Text style={styles.sectionTitle}>Menu Pintasan Utama</Text>
         <View style={styles.grid}>
-          {actions.map((action) => (
+          {GRID_ACTIONS.map((action) => (
             <TouchableOpacity
               key={action.id}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel={action.label}
-              onPress={action.onPress}
+              onPress={() => handleTilePress(action)}
               style={styles.gridItem}
             >
               <View style={[styles.gridIcon, { backgroundColor: action.bgColor }]}>
@@ -176,16 +110,15 @@ export function CareScreen() {
 
         <View style={styles.recentHeader}>
           <Text style={styles.recentTitle}>Recent Activity</Text>
-          <Pressable
+          <TouchableOpacity
+            activeOpacity={0.7}
             onPress={() => {
               void hapticLight();
               router.push('/(tabs)/activity');
             }}
-            hitSlop={8}
-            style={({ pressed }) => pressed && { opacity: 0.7 }}
           >
             <Text style={styles.viewHistory}>View History</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
         {recentLogs.map((entry) => (
           <View key={entry.id} style={styles.logRow}>
@@ -205,11 +138,9 @@ export function CareScreen() {
         ))}
       </ScrollView>
 
-      <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
-      <ComingSoonBottomSheet
-        featureName={comingSoonFeature}
-        onDismiss={() => setComingSoonFeature(null)}
-      />
+      {sheetConfig ? (
+        <ConfirmBottomSheet config={sheetConfig} onDismiss={() => setSheetConfig(null)} />
+      ) : null}
     </View>
   );
 }
@@ -233,12 +164,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#586377',
   },
-  heroName: {
-    marginTop: 4,
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0b1c30',
-  },
+  heroName: { marginTop: 4, fontSize: 24, fontWeight: '700', color: '#0b1c30' },
+  heroContact: { marginTop: 4, fontSize: 13, fontWeight: '600', color: '#006948' },
   liveBadge: {
     marginTop: 8,
     flexDirection: 'row',
@@ -259,17 +186,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     color: '#586377',
   },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  gridItem: {
-    width: '22%',
-    alignItems: 'center',
-    marginBottom: 24,
-    minHeight: 88,
-  },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
+  gridItem: { width: '22%', alignItems: 'center', marginBottom: 24, minHeight: 88 },
   gridIcon: {
     marginBottom: 8,
     height: 56,
@@ -278,12 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: 16,
   },
-  gridLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: '#586377',
-  },
+  gridLabel: { fontSize: 12, fontWeight: '600', textAlign: 'center', color: '#586377' },
   recentHeader: {
     marginTop: 16,
     flexDirection: 'row',

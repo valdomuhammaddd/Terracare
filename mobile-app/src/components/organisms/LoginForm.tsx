@@ -74,7 +74,7 @@ export function LoginForm({ onSignUpPress }: LoginFormProps) {
         </View>
       ) : null}
 
-      <View style={[authStyles.ctaWrap, { zIndex: 10 }]}>
+      <View style={authStyles.ctaWrap}>
         <Button label="MASUK" onPress={() => void handleSubmit()} isLoading={isLoading} />
       </View>
 

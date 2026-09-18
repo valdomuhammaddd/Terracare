@@ -10,6 +10,7 @@ import type { VitalLog } from '@/types/supabase';
 import { hapticLight } from '@/utils/haptics';
 import { shouldUseMockFallback } from '@/constants/demo-config';
 import { MockDataService } from '@/services/MockDataService';
+import { useAuthStore } from '@/store/auth-store';
 
 function average(values: number[]): number | null {
   if (values.length === 0) return null;
@@ -31,10 +32,10 @@ function InsightsSkeleton() {
 }
 
 export function InsightsScreen() {
+  const authProfile = useAuthStore((s) => s.profile);
   const [vitals, setVitals] = useState<VitalLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [profileName, setProfileName] = useState<string>();
 
   const loadData = useCallback(async (pull = false) => {
     if (pull) setIsRefreshing(true);
@@ -45,19 +46,11 @@ export function InsightsScreen() {
     } = await supabase.auth.getUser();
 
     if (!user) {
-      setVitals([]);
+      setVitals(MockDataService.getInsightVitals());
       setIsLoading(false);
       setIsRefreshing(false);
       return;
     }
-
-    const { data: profileRow } = await supabase
-      .from('profiles')
-      .select('full_name')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (profileRow) setProfileName((profileRow as { full_name: string }).full_name);
 
     const { data, error } = await supabase
       .from('vital_logs')
@@ -85,7 +78,7 @@ export function InsightsScreen() {
 
   return (
     <View className="flex-1 bg-background">
-      <AppHeader profileName={profileName} />
+      <AppHeader profileName={authProfile?.full_name} />
       <ScrollView
         className="flex-1"
         contentContainerClassName="px-container-margin pb-36 pt-md"

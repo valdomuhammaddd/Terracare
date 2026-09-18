@@ -1,6 +1,6 @@
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -30,22 +30,21 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render() {
     if (this.state.hasError) {
       return (
-        <View className="flex-1 items-center justify-center bg-background px-container-margin">
-          <View className="mb-md h-16 w-16 items-center justify-center rounded-full bg-surface-container-low">
+        <View style={styles.container}>
+          <View style={styles.iconWrap}>
             <MaterialIcons name="health-and-safety" size={36} color="#006948" />
           </View>
-          <Text className="text-center text-headline-md font-bold text-on-surface">
-            TerraCare siap membantu
-          </Text>
-          <Text className="mt-sm text-center text-body-md leading-relaxed text-on-surface-variant">
+          <Text style={styles.title}>TerraCare siap membantu</Text>
+          <Text style={styles.message}>
             Terjadi gangguan tampilan sementara. Aplikasi tetap aman — silakan muat ulang layar ini.
           </Text>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Muat Ulang"
             onPress={this.handleRetry}
-            className="mt-xl h-14 w-full max-w-xs items-center justify-center rounded-2xl bg-primary active:opacity-90"
+            style={({ pressed }) => [styles.retryBtn, pressed && styles.retryPressed]}
           >
-            <Text className="text-lg font-bold text-on-primary">Muat Ulang</Text>
+            <Text style={styles.retryLabel}>Muat Ulang</Text>
           </Pressable>
         </View>
       );
@@ -54,3 +53,51 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return this.props.children;
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#f5fff7',
+    paddingHorizontal: 24,
+  },
+  iconWrap: {
+    marginBottom: 16,
+    height: 64,
+    width: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 32,
+    backgroundColor: '#e8ecf4',
+  },
+  title: {
+    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#0b1c30',
+  },
+  message: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#586377',
+    maxWidth: 320,
+  },
+  retryBtn: {
+    position: 'relative',
+    marginTop: 32,
+    height: 56,
+    width: '100%',
+    maxWidth: 280,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    backgroundColor: '#006948',
+    zIndex: 999,
+    elevation: 12,
+  },
+  retryPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
+  retryLabel: { fontSize: 18, fontWeight: '700', color: '#ffffff' },
+});

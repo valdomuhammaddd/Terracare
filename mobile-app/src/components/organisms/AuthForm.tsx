@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { useAuthStore } from '@/store/auth-store';
 
@@ -23,7 +23,7 @@ export function AuthForm() {
   };
 
   return (
-    <View className="w-full max-w-md self-center">
+    <View style={styles.wrap}>
       {mode === 'login' ? (
         <LoginForm onSignUpPress={switchToRegister} />
       ) : (
@@ -32,3 +32,11 @@ export function AuthForm() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    width: '100%',
+    alignSelf: 'center',
+    zIndex: 10,
+  },
+});
